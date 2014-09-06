@@ -1,0 +1,20 @@
+% test radar5
+
+clear
+close all
+
+F1=@(t,x,xd,xt) -xd(1) + sin(x(1)) + cos(xt(3:4))*[1;1];
+F2=@(t,x,   xt)       x(2) - xt(1:2)*[1;1] + sin(t); 
+
+tau = @(t) [1,t+1];
+phi = @(t) [1;0];
+
+options.NGrid=100;
+options.tolR = 1e-7;
+options.x0=[0;1];
+
+
+[t,x]=solve_ddae({F1,F2,tau,phi},[0,10],options);
+
+title('solution')
+plot(t,x)
