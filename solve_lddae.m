@@ -157,7 +157,11 @@ for i=1:N
                 g(k*m+1:(k+1)*m) = matrix_differential(BXTAUF,t(i)+c(j)*h,k,tolR,m,1);
             end
             g1 = Z1'*(BXTAUF(t(i)+c(j)*h));
-            g2 = Z2'*g;
+            if numel(Z2)>0
+                g2 = Z2'*g;
+            else
+                g2 = zeros(0,1);
+            end
         else
             [E1,A1,g1,A2,g2] = regularize_strange_ldae(E,A,BXTAUF,t(i)+c(j)*h,options);
         end
@@ -165,16 +169,17 @@ for i=1:N
         P = inflateB(B,t(i)+c(j)*h,mu,tolR,m,l*n);
         % check if the derivatives of x(t-tau) vanish in the differential
         % part
-        B_2 = Z2'*P;
-        if mu>0
-            if max(max(abs(B_2(:,l*n+1:end))))>tolR*max(max(B_2),1)
-                mess1 = sprintf(['\nmaxmax(B_2(:,l*n+1:end))/max(norm(B_2,1),1)) = ',num2str(max(max(abs(B_2(:,n+1:end))))/max(norm(B_2,1),1))]);
-                mess2 = sprintf(['\ntolerance                            = ',num2str(tolR)]);
-                mess3 = sprintf('\n\nACCORDING TO THE CHOSEN TOLERANCE, THE SYSTEM IS OF ADVANCED TYPE, USING THE METHOD OF STEPS MIGHT PRODUCE LARGE ERRORS.');
-                warning([mess1,mess2,mess3])
+        if numel(Z2)>0
+            B_2 = Z2'*P;
+            if mu>0
+                if max(max(abs(B_2(:,l*n+1:end))))>tolR*max(max(B_2),1)
+                    mess1 = sprintf(['\nmaxmax(B_2(:,l*n+1:end))/max(norm(B_2,1),1)) = ',num2str(max(max(abs(B_2(:,n+1:end))))/max(norm(B_2,1),1))]);
+                    mess2 = sprintf(['\ntolerance                            = ',num2str(tolR)]);
+                    mess3 = sprintf('\n\nACCORDING TO THE CHOSEN TOLERANCE, THE SYSTEM IS OF ADVANCED TYPE, USING THE METHOD OF STEPS MIGHT PRODUCE LARGE ERRORS.');
+                    warning([mess1,mess2,mess3])
+                end
             end
         end
-        
         Etij(:,:,j)=[E1;zeros(size(A2))];
         Atij(:,:,j)=[A1;A2];
         ftij(:,j)=[g1;g2];

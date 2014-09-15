@@ -1,0 +1,39 @@
+xe = @(t) [sin(t);cos(t)];
+xed = @(t) [cos(t);-sin(t)];
+
+E = [
+    1 0
+    0 0
+    0 0
+    ];
+
+tau = 1;
+phi = xe;
+
+a = @(t) (t>2*tau).*(exp(-1/(t-)^2));
+
+A = @(t) [
+    0 0
+    0 0
+    0 a(t)
+    ];
+
+B = [
+    0 0
+    0 1
+    0 0
+    ];
+
+f = @(t) E*xed(t)-A(t)*xe(t)-B*xe(t-tau);
+E=@(t)E;
+B=@(t)B;
+
+tspan=[0,3*tau];
+
+options={};
+
+tic
+[t,x] = solve_ddae({E,A,B,f,tau,phi},tspan,options);
+toc
+
+semilogy(t,abs(x-xe(t)));

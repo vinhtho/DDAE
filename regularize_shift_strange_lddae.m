@@ -105,6 +105,9 @@ for K = 0:KMax
         % a and differential equations d is equal to the number of
         % variables n, if not then continue by increasing mu or K
         a = rank(A_2,tolR);
+        if norm(isnan(Z1'*M*T2)+isinf(Z1'*M*T2),1)>0
+            Z1(isnan(Z1))=0;
+        end
         d = rank(Z1'*M*T2,tolR);
         if a+d~=n
             continue

@@ -94,8 +94,8 @@ AA = @(s) A_reformulated(A,B,m,n,L,s,tau);
 ff = @(s) f_reformulated(f,B,phi,m,n,L,s,tau);
 
 % find a consistent initial value for the DDAE
-[~,~,~,A2,f2,mu,~,~] = regularize_strange_ldae(E,A,@(t)B(t)*phi(t-tau)+f(t),t0,options);
-x0 = x0 - pinv(A2)*(A2*x0+f2);
+%[~,~,~,A2,f2,mu,~,~] = regularize_strange_ldae(E,A,@(t)B(t)*phi(t-tau)+f(t),t0,options);
+%x0 = x0 - pinv(A2)*(A2*x0+f2);
 
 [t,xx] = solve_ldae_bvp(EE,AA,ff,eye(L*n),-diag(ones((L-1)*n,1),-n),[x0;zeros((L-1)*n,1)],[t0,t0+tau],options_new);
 
