@@ -6,7 +6,6 @@ function [t,x]=solve_nddae(F1,F2,tau,phi,tspan,options)
 %
 %                       F1(t,x,x',xt) =0,
 %                       F2(t,x,   xt) =0,
-%                       F3(t,     xt) =0,
 %
 %   where xt(t)=[x(t-tau_1(t));...;x(t-tau_l(t))], t0<=t<=tf for some real
 %   numbers t0,tf; x in D1 and x' in D2 with D1 and D2 being open subsets
