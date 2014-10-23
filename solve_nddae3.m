@@ -1,4 +1,4 @@
-function [t,x]=solve_nddae2(version,F,Phi,tau,tspan,n,options)
+function [t,x]=solve_nddae3(F,Phi,tau,tspan,n,options)
 %                                    .
 % We want to solve the DDAE F(t,x(t),x(t),x(t-tau)) = 0 with constant delay
 % tau>0.
@@ -51,7 +51,7 @@ end
 % main loop
 for k = 1:N
     %                          .            (mu)
-    % Computing Xt = [x(t-tau);x(t-tau);...;x (t-tau)]
+    % Computing Xt = [x(t-tau);x(t-tau);...;x (t-tau)].
     Xt = zeros((mu+1)*n,1);
     if t(k)+h-tau<tspan(1)
         for j = 0:mu
@@ -59,44 +59,21 @@ for k = 1:N
         end
     else
         k_tau = find(t(k)+h-tau<=t,1);
-        % we use linear interpolation between the x-values corresponding to
+        % We use linear interpolation between the x-values corresponding to
         % t(k_tau) and t(k_tau+1)
         Xt(1:(mu+1)*n,1) = x(1:(mu+1)*n,k_tau)+(x(1:(mu+1)*n,k_tau+1)-x(1:(mu+1)*n,k_tau))*(t(k)+h-tau-t(k_tau))/(t(k_tau+1)-t(k_tau));
-    end
-    
-    % 
-    bdf_order = 6;
-    % The matrix xx contains the bdf_order x-values to x(:,k+1),
-    % i.e. x(:,k+1-bdf_order), x(:,k+1-bdf_order-1), x(:,k+1-bdf_order-2),
-    % ..., x(:,k). For time points smaller than t0 we use the history
-    % function.
-    if k >= bdf_order+1
-        xx = x(:,k-bdf_order+1:k);
-    else
-        xx = zeros((mu+2)*n*(K+1),bdf_order);
-        for l = 1:bdf_order
-            if t(k)-(l-1)*h<t(1)
-                for j = 0:K
-                    xx(j*n+1:(j+1)*n,bdf_order-l+1) = feval(Phi{1},t(k)-(l-1)*h);
-                end
-            else
-                xx(:,bdf_order-l+1) = x(:,k-l+1);
-            end
-        end
     end
     
     % xdata is just a dummy variable for lsqcurvefit
     FF = @(X,xdata)[
         form_big_system(F,t(k)+h,X,Xt,K,mu,n,tau);
-        form_bdf_system(F,t(k)+h,xx,X,Xt,h,n,bdf_order)
         ];
     
-    % Now solve FF(X)=0
-    warning off
-    x(:,k+1) = lsqcurvefit(FF,x(:,k),{},zeros((K+1)*(mu+1)*n+n,1),[],[],optimset('Display','Off'));
-    warning on
+    % Now solve FF(X)=0.
+    x(:,k+1) = lsqcurvefit(FF,x(:,k),{},zeros((mu+1)*n*(K+1),1),[],[],optimset('Display','Off'));
 end
 
+% subroutine for evaluating the big inflated system
 function FF1 = form_big_system(F,t,X,Xt,K,mu,n,tau)
 % X  has length (mu+2)*n*(K+1)
 % Xt has length (mu+1)*n
@@ -109,26 +86,3 @@ for i = 1:K
         FF1(j*n+1+i*(mu+1)*n:(j+1)*n+i*(mu+1)*n) = feval(F{j+1},t+i*tau,X((1:(j+2)*n)+i*(mu+2)*n),X((1:(j+1)*n)+(i-1)*(mu+2)*n));
     end
 end
-
-function FF2 = form_bdf_system(version,F,t,xx,X,Xt,h,n,bdf_order)
-switch bdf_order
-    case 1
-        Dh_X = (X-xx)/h;
-    case 2
-        Dh_X = (3/2*X+xx*[1/2; -2])/h;
-    case 3
-        Dh_X = (11/6*X+xx*[-1/3; 3/2; -3])/h;
-    case 4
-        Dh_X = (25/12*X+xx*[1/4; -4/3; 3; -4])/h;
-    case 5
-        Dh_X = (137/60*X+xx*[-1/5; 5/4; -10/3; 5; -5])/h;
-    case 6
-        Dh_X = (49/20*X+xx*[1/6; -6/5; 15/4; -20/3; 15/2; -6])/h;
-end
-
-switch version
-    case 1
-        FF2 = [];
-    case 2
-FF2(1:n) = feval(F{1},t,[X(1:n);Dh_X(1:n)],Xt);
-%FF2(n+1:2*n) = X(n+1:2*n)-Dh_X(1:n);

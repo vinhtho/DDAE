@@ -123,11 +123,14 @@ Z=zeros(l*n,3);
 for i=1:N
     % calculating Z = x(t_i+c_j*h-tau_k)
     for j=1:3
-        TAU=tau(t(i)+c(j)*h);
+        TAU = tau(t(i)+c(j)*h);
         for k=1:l
+            if TAU(k) <= 0
+                error('THE DELAY MUST BE BIGGER THAN ZERO!');
+            end
             %check if x(t-tau) is given by Phi or has to be determined by
             % interpolating the current approximate solution
-            if t(i)+c(j)*h-TAU(k)<t0
+            if t(i)+c(j)*h-TAU(k)<=t0
                 Z((k-1)*n+1:k*n,j)=phi(t(i)+c(j)*h-TAU(k));
             else
                 % find the biggest time node smaller than t_i+c_j*h-TAU(k)

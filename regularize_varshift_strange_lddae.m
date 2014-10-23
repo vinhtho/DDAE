@@ -28,7 +28,7 @@ function [E_1,A_1,B_1,f_1,A_2,B_2,f_2,mu,K,Z1,Z2,U1] = regularize_varshift_stran
 isConst = 0;
 K0 = 0;
 KMax = 3;
-mu0 = -1;
+mu0 = 0;
 muMax = 3;
 tolA = 1e-7;
 tolR = 1e-7;
@@ -38,8 +38,8 @@ if exist('options','var')
     if isfield(options,'MaxShift')  KMax=options.MaxShift; end
     if isfield(options,'MaxStrIdx') muMax=options.MaxStrIdx; end
     if isfield(options,'RelTol')    tolR=options.RelTol; end
-    if isfield(options,'Shift')     K0=max(0,options.Shift); KMax = max(KMax,K0); end
-    if isfield(options,'StrIdx')    mu0=options.StrIdx; muMax = max(muMax,mu0); end
+    if isfield(options,'Shift')     K0=max(0,options.Shift); end
+    if isfield(options,'StrIdx')    mu0=options.StrIdx; end
     if isfield(options,'x0')        x0=options.x0; end
 end
 % tolerance for the matrix differential

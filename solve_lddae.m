@@ -111,6 +111,7 @@ end
 BXTAUF = @(s) B(s)*eval_all_hist_funcs(hist_funcs,s,tau(s),n,l)+f(s);
 [E1,A1,~,A2,g2,mu,Z1,Z2] = regularize_strange_ldae(E,A,BXTAUF,t0,options);
 
+% compute nearest consistent initial vector to x0
 x(2*n+1:3*n,1)=x0-pinv(A2)*(A2*x0+g2);
 
 % the discretized time interval

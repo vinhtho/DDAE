@@ -48,6 +48,6 @@ options.MaxStrIdx = 10;
 options.isConst = 1;
 
 tic
-[t,x]=solve_ddae({E,A,B,f,tau,phi},[0,3],options);
+[t,x]=solve_advanced_lddae(E,A,B,f,tau,phi,[0,3],options);
 toc
 semilogy(t,abs(x-xe(t))./abs(xe(t)));

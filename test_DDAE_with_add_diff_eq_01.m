@@ -1,19 +1,10 @@
-function test_nddae2(version)
-%
-%   Use version to switch between several systems.
-%   
-%   version=1: Inflated system without any additional equations.
-%
-%   version=2: Inflated system and F(t,x,Dh x) = 0.
-%                                  .
-%   version=3: Inflated system and x = Dh x 
-%                                                     .
-%   version=4: Inflated sytem and F(t,x,Dh x) = 0 and x = Dh x 
-%
+function test_DDAE_with_add_diff_eq_01( )
+%TEST_DDAE_WITH_ADD_DIFF_EQ_01 Summary of this function goes here
+%   Detailed explanation goes here
 
-%non-othogonal matrices lead to a larger errors
-P=orth(rand(2));
-Q=orth(rand(2));
+
+P=eye(2);
+Q=eye(2);
 
 E= P*[
     1   0   
@@ -60,23 +51,20 @@ F = { @(t,X,Xt) -E*X(3:4)+A*X(1:2)+B*Xt(1:2)+f(t)
 
 Phi = {xe,xed,xedd,xeddd,xedddd};
 
-tspan = [0,5];
+tspan = [0,2];
 
-options.StrIdx = 1;
+options.StrIdx = 3;
 options.Shift = 1;
 options.StepSize = 0.1;
 
 % the dimension of x
 n = 2;
 
-tic
-[t,x] = solve_nddae2(version,F,Phi,tau,tspan,n,options);
-toc
+[t,x] = solve_nddae2(F,Phi,tau,tspan,n,options);
 
-close
-subplot(2,1,1)
-plot(t,x(1:2,:))
-subplot(2,1,2)
-semilogy(t,abs(x(1:2,:)-xe(t)))
+err = max(max((abs(x(1:2,:)-xe(t)))));
 
-disp(['maximal absolute error = ',num2str(max(max(abs(x(1:2,:)-xe(t)))))])
+assert(err<1e-2)
+
+end
+
