@@ -1,4 +1,4 @@
-function [t,x]=solve_nddae2(version,F,Phi,tau,tspan,n,options)
+function [t,x]=solve_nddae2(version,F,Phi,tau,tspan,options)
 %                                    .
 % We want to solve the DDAE F(t,x(t),x(t),x(t-tau)) = 0 with constant delay
 % tau>0.
@@ -11,6 +11,18 @@ function [t,x]=solve_nddae2(version,F,Phi,tau,tspan,n,options)
 %
 % Analogously Phi is a struct containing the i-th derivative of the history
 % function at the (i+1)-st entry having only t as an input.
+%
+%   Use version to switch between several systems.
+%   
+%   version=1: Inflated system without any additional equations
+% 
+%   version=2: Inflated system and F(t,x,Dh x) = 0
+%                                  .
+%   version=3: Inflated system and x = Dh x 
+%                                                     .
+%   version=4: Inflated sytem and F(t,x,Dh x) = 0 and x = Dh x 
+% 
+
 
 % the shift and strangeness index have to be known
 K = 0;
@@ -36,6 +48,9 @@ else
     options = {};
 end
 
+% the dimension
+n=length()
+
 % the output parameters
 x = zeros((mu+2)*n*(K+1),N+1);
 t = tspan(1):h:tspan(2);
@@ -43,10 +58,11 @@ t = tspan(1):h:tspan(2);
 % Actually, we are cheating here, because we don't know x(t) for t>t0.
 % However, in most of our test examples x(t) = phi(t) for all t.
 for i = 0:K
-    for j = 0:mu+1
+    for j = 0:mu
         x(j*n+1+i*(mu+2)*n:(j+1)*n+i*(mu+2)*n,1) = feval(Phi{j+1},tspan(1)+i*tau);
     end
 end
+
 
 % main loop
 for k = 1:N
@@ -88,12 +104,23 @@ for k = 1:N
     % xdata is just a dummy variable for lsqcurvefit
     FF = @(X,xdata)[
         form_big_system(F,t(k)+h,X,Xt,K,mu,n,tau);
-        form_bdf_system(F,t(k)+h,xx,X,Xt,h,n,bdf_order)
+        form_bdf_system(version,F,t(k)+h,xx,X,Xt,h,n,bdf_order)
         ];
+    
+    switch version
+        case 1
+            y = zeros((K+1)*(mu+1)*n,1);
+        case 2
+            y = zeros((K+1)*(mu+1)*n+n,1);
+        case 3
+            y = zeros((K+1)*(mu+1)*n+n,1);
+        case 4
+            y = zeros((K+1)*(mu+1)*n+2*n,1);
+    end
     
     % Now solve FF(X)=0
     warning off
-    x(:,k+1) = lsqcurvefit(FF,x(:,k),{},zeros((K+1)*(mu+1)*n+n,1),[],[],optimset('Display','Off'));
+    x(:,k+1) = lsqcurvefit(FF,x(:,k),{},y,[],[],optimset('Display','Off'));
     warning on
 end
 
@@ -130,5 +157,11 @@ switch version
     case 1
         FF2 = [];
     case 2
-FF2(1:n) = feval(F{1},t,[X(1:n);Dh_X(1:n)],Xt);
-%FF2(n+1:2*n) = X(n+1:2*n)-Dh_X(1:n);
+        FF2 = feval(F{1},t,[X(1:n);Dh_X(1:n)],Xt);
+    case 3
+        FF2 = X(n+1:2*n)-Dh_X(1:n);
+    case 4
+        FF2 = zeros(2*n,1);
+        FF2(1:n) = feval(F{1},t,[X(1:n);Dh_X(1:n)],Xt);
+        FF2(n+1:2*n) = X(n+1:2*n)-Dh_X(1:n);
+end

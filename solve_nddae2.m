@@ -1,4 +1,4 @@
-function [t,x]=solve_nddae2(version,F,Phi,tau,tspan,n,options)
+function [t,x]=solve_nddae2(version,F,Phi,tau,tspan,options)
 %                                    .
 % We want to solve the DDAE F(t,x(t),x(t),x(t-tau)) = 0 with constant delay
 % tau>0.
@@ -48,6 +48,9 @@ else
     options = {};
 end
 
+% the dimension
+n=length(feval(Phi{1},0));
+
 % the output parameters
 x = zeros((mu+2)*n*(K+1),N+1);
 t = tspan(1):h:tspan(2);
@@ -55,10 +58,11 @@ t = tspan(1):h:tspan(2);
 % Actually, we are cheating here, because we don't know x(t) for t>t0.
 % However, in most of our test examples x(t) = phi(t) for all t.
 for i = 0:K
-    for j = 0:mu+1
+    for j = 0:mu
         x(j*n+1+i*(mu+2)*n:(j+1)*n+i*(mu+2)*n,1) = feval(Phi{j+1},tspan(1)+i*tau);
     end
 end
+
 
 % main loop
 for k = 1:N

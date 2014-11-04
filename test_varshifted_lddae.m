@@ -23,7 +23,7 @@ phi=@(t)[
     sin(t)
     ];
 
-tau=@(t) 1-sin(t)/2;
+tau=@(t) 0.5099-sin(t)/2;
 t0=0;
 % consistent initial vector
 x0=[1 0]';
