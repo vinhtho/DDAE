@@ -33,7 +33,6 @@ muMax = 3;
 tolA = 1e-7;
 tolR = 1e-7;
 if exist('options','var')
-    if isfield(options,'isConst')   isConst=options.isConst; end
     if isfield(options,'AbsTol')    tolA=options.AbsTol; end
     if isfield(options,'MaxShift')  KMax=options.MaxShift; end
     if isfield(options,'MaxStrIdx') muMax=options.MaxStrIdx; end
@@ -203,7 +202,6 @@ switch mu
             B3,3*B2*(1-tau1)-3*B1*tau2-B0*tau3,3*B1*(1-tau1)^2-3*B0*(1-tau1)*tau2,B0*(1-tau1)^3
             ];
 end
-
 
 function g = inflatef(f,t_shifted,K,mu,tol,m)
 %

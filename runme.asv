@@ -1,0 +1,19 @@
+E=@(t)[1 0; 0 0];
+A=@(t)[0 0; 1 0];
+B=@(t)[0 0; 1 0];
+
+phi = @(t) [sin(t);cos(t)];
+
+tau = @(t) exp(-t);
+
+f=@(t)E(t)*[cos(t);-sin(t)]+A(t)*phi(t)+B(t)*phi(t-tau(t));
+
+tspan=[0,10];
+
+options.StepSize=0.1;
+options.StrIdx=1;
+options.Shift=1;
+options.MaxStrIdx=1;
+options.MaxShift=1;
+
+[t,x] = solve_varshifted_lddae(E,A,B,f,tau,phi,tspan,options);
