@@ -1,83 +1,154 @@
-function [t,x] = solve_varshifted_lddae(E,A,B,f,tau,phi,tspan,options)
-%solve_varshifted_lddae
+function [t,x,info] = coldedaNonCausal(E,A,B,f,tau,phi,tspan,options)
+%COLDEDA_NONCAUSAL numerical solver for non-causal linear delay
+% differential-algebraic equations of the form
+%   E(t)\dot{x}(t) = A(t)x(t) + B(t)x(t-tau(t)) + f(t)  for t\in(t0,tf]
+%             x(t) = phi(t),                            for t<=t0
+% with smooth delay tau(t)>=0 and history function phi.
 %
-%   Solver for linear delay differential algebraic equations (DDAEs) with
-%   variable coefficients and single, variable delay tau(t) >= 0, i.e.
-%           .
-%       E(t)x(t) = A(t)x(t) + B(t)x(t-tau(t)) + f(t),   t0 <= t <= tf,
-%           x(t) = phi(t),                              t <= t0,
+% Noncausal means that the so called shift index can be bigger than zero,
+% but we only allow it to be at most three (due to hard coding).
 %
-%   based on using the method of steps and using Radau IIA collocation.
-%                          .
-%   The corresponding DAE Ex = Ax can have strangeness index bigger than
-%   zero (differentiation index bigger than one). However, note that bigger
-%   errors might occur if the strangeness index is too big, because
-%   derivatives are approximated by finite differences. We suppose that the
-%   strangeness index is not bigger than three.
+% The corresponding DAE Ex = Ax can have strangeness index bigger than
+% zero (differentiation index bigger than one). However, note that bigger
+% errors might occur if the strangeness index is too big, because
+% derivatives are approximated by finite differences. We suppose that the
+% strangeness index is not bigger than three.
 %
-%   Furthermore, we allow the so called shift index to be bigger than zero,
-%   but not bigger than three (due to hard coding).
+% The time stepping is based on the method of steps and using Radau IIA 
+% collocation.
 %
-%   A regularization routine regularizes the DDAE by shifting appropriate
-%   equations and reducing the strangeness.
+% @parameters:
+%   E,A,B       Coefficients of the DDAE, m-by-n matrix functions.
+%   f           m-by-1 vector function.
+%   tau         Variable lag, scalar function.
+%   phi         n-by-1 history function.
+%   tspan       Considered time interval [t0,tf].
+%   options     Struct for optional parameters, set by
+%               'options.FieldName = FieldValue', see below
 %
-%   INPUT
-%   -----
-%   E       fcn_handle      m-by-n leading matrix function
-%   A       fcn_handle      m-by-n matrix function
-%   B       fcn_handle      m-by-n matrix function for the delayed part
-%   f       fcn_handle      m-by-1 inhomogeneity function
-%   tau     double(1,1)     constant delay
-%   phi     fcn_handle      history function
-%   tspan   double(1,2)     the time interval
-%   options struct          contains several fields with respective values,
-%                           see options below
+% @options
+%   MaxIter     Upper bound for the total number of time steps (including 
+%               rejected time steps).
+%   MaxReject   Upper bound for the number of rejections per time step.
+%   MaxCorrect  Upper bound for the number of correction steps when using
+%               long steps (step size bigger than the lag).
 %
-%   FIELDS FOR OPTIONS
-%   ------------------
-%   AbsTol      double      absolute tolerance
-%   isConst     boolean     TRUE if E,A,B are constant, FALSE otherwise
-%   MaxShift    double      upper bound for the shift index
-%   MaxStrIdx   double      upper bound for the strangeness index
-%   NGrid       double      no. of grid points for time discretization
-%   RelTol      double      relative tolerance
-%   Shift       double      shift index (if known)
-%   StepSize    double      (constant) step size for the one-step method
-%   StrIdx      double      strangeness index (if known)
-%   x0          double(n,1) initial value (usually x0 = phi(t0))
+%   InitStep    Inital step size.
+%   MinStep     Lower bound for the step size, default: 0.
+%   MaxStep     Upper bound for the step size, default: inf.
 %
-%   OUTPUT
-%   ------
-%   t       double(1,Ngrid)   discretization of tspan
-%   x       double(n,Ngrid)   approximate solution at the time nodes in t
+%   AbsTol      Absolute tolerance, default: 1e-5.
+%   RelTol      Relative tolerance, default: 1e-5.
+%   LagTol      Set x(t-tau(t)):=x(t) for tau(t)<=LagTol, default: 1e-5.
 %
-%   References:
-%   http://www.math.uni-bremen.de/zetem/cms/media.php/262/report9908.pdf
-%   TODO more references
+%   StrIdx      Lower bound for the strangeness index.
+%   MaxStrIdx   Upper bound for the strangeness index.
+%   Shift       Lower bound for the shift index.
+%   MaxShift    Upper bound for the shift index.
+%
+%   InitVal     Initial value, not necessarily consistent.
+%
+% @supporting functions:
+%   timeStep
+%   getRegularizedSystem
+%   inflateEA
+%   inflateB
+%   inflatef
+%   solveLinSystem
+%   nevilleAitken
+%
+% @return values:
+%   t           t(i) = t0+h_i with h_i the i-th step size.
+%   x           numerical solution at the time nodes in t.
+%   info        Struct with information.
+%
+% @author:
+%       Vinh Tho Ma, TU Berlin, mavinh@math.tu-berlin.de
+%       Phi Ha, TU Berlin, ha@math.tu-berlin.de
 
 %-------------------------------------------------------------------------%
 % set missing fields in options
 %-------------------------------------------------------------------------%
 if ~exist('options','var'),options = {}; end
-if ~isfield(options,'AbsTol')    options.AbsTol = 1e-7; end
+
+% bounds for the itererations in the main loop
 if ~isfield(options,'MaxIter')   options.MaxIter = 10000; end
-if ~isfield(options,'MaxShift')  options.MaxShift = 3; end
-if ~isfield(options,'MaxStrIdx') options.MaxStrIdx = 3; end
-if ~isfield(options,'RelTol')    options.RelTol = 1e-7; end
-if ~isfield(options,'Shift')     options.Shift = 0; end
-if ~isfield(options,'StepSize')  options.StepSize = diff(tspan)/100; end
+if ~isfield(options,'MaxReject') options.MaxReject = 100; end
+if ~isfield(options,'MaxCorrect')options.MaxCorrect = 10; end
+
+% initial step size and bounds for the step size
+if ~isfield(options,'InitStep')  options.InitStep = diff(tspan)/100; end
+if ~isfield(options,'MinStep')   options.MinStep = 0; end
+if ~isfield(options,'MaxStep')   options.MaxStep = inf; end
+
+% tolerances
+if ~isfield(options,'AbsTol')    options.AbsTol = 1e-5; end
+if ~isfield(options,'RelTol')    options.RelTol = 1e-5; end
+if ~isfield(options,'LagTol')    options.LagTol = 1e-5; end
+
+% the DDAE's indeces (guesses, if unknown)
 if ~isfield(options,'StrIdx')    options.StrIdx = 0; end
-if ~isfield(options,'x0')        options.x0 = phi(tspan(1)); end
+if ~isfield(options,'MaxStrIdx') options.MaxStrIdx = 3; end
+if ~isfield(options,'Shift')     options.Shift = 0; end
+if ~isfield(options,'MaxShift')  options.MaxShift = 3; end
+
+% initial value (not necessarily consistent)
+if ~isfield(options,'InitVal')   options.InitVal = phi(tspan(1)); end
 
 %-------------------------------------------------------------------------%
 % defining some parameters
 %-------------------------------------------------------------------------%
 t0 = tspan(1);
-E0 = E(tspan(1));
-n = size(E0,2);
-h = options.StepSize;
+if not(isa(E,'function_handle'))
+    error('E must be a function handle.'); 
+end
+[m,n] = size(E(0));
+h = options.InitStep;
 N = floor(diff(tspan)/h);
-x0 = options.x0;
+x0 = options.InitVal;
+
+info.Rejected_Steps = 0;
+
+%-------------------------------------------------------------------------%
+% some more input checks
+%-------------------------------------------------------------------------%
+% checking tau
+if or(not(isa(tau,'function_handle')),numel(tau(0))>1)
+    error('Delay tau must be a scalar function.'); 
+end
+% checking A
+if not(isa(A,'function_handle'))
+    error('A must be a function handle.'); 
+end
+if or(size(A(0),1)~=m,size(A(0),2)~=n)
+    error('A has wrong size.')
+end
+% checking B
+if not(isa(B,'function_handle'))
+    error('B must be a function handle.'); 
+end
+if or(size(B(0),1)~=m,size(B(0),2)~=n)
+    error('B has wrong size.')
+end
+% checking f
+if not(isa(f,'function_handle'))
+    error('f must be a function handle.'); 
+end
+if or(size(f(0),1)~=m,size(f(0),2)~=1)
+    error('f has wrong size.')
+end
+% checking phi
+if or(size(phi(0),1)~=n,size(phi(0),2)~=1)
+    error('phi has wrong size.')
+end
+% checking the options
+if options.MaxShift<options.Shift
+    error('MaxShift must not be less than Shift.')
+end
+if options.MaxStrIdx<options.StrIdx
+    error('MaxStrIdx must not be less than StrIdx.')
+end
+
 
 %-------------------------------------------------------------------------%
 % preparation for the main loop
@@ -99,26 +170,51 @@ t(1)=tspan(1);
 %-------------------------------------------------------------------------%
 % finding consistent initial value
 %-------------------------------------------------------------------------%
-[~,~,~,~,A2,B2,f2,~,~,~,~,~] = regularize_varshift_strange_lddae(E,A,B,f,tau,t0,options);
+[~,~,~,~,A2,B2,f2,mu,K] = getRegularizedSystem(E,A,B,f,tau,t0,options);
 x(2*n+1:3*n,1)=x0-pinv(A2)*(A2*x0+B2*phi(t0-tau(t0))+f2);
+info.Strangeness_Index = mu;
+info.Shift_Index = K;
 
 %-------------------------------------------------------------------------%
 % main loop - time integration
 %-------------------------------------------------------------------------%
-
-for i=1:N
+for i=1:options.MaxIter
     % Compute approximation of x at t = t(i)+h.
     
+    absErr = inf;
+    relErr = inf;
     
-    x_full = performLongStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h,options);
-    x_half = performLongStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h/2,options);
-    x_half = performLongStep(E,A,B,f,tau,phi,[t(1:i),t(i)+h/2],[x(:,1:i),x_half],h/2,options);
+    for j=1:options.MaxReject
+        % Estimate the local error by performing a full step and two half
+        % steps.
+        x_full = timeStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h,options);
+        x_half = timeStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h/2,options);
+        x_half = timeStep(E,A,B,f,tau,phi,[t(1:i),t(i)+h/2],[x(:,1:i),x_half],h/2,options);
+        absErr = norm(x_half(2*n+1:3*n)-x_full(2*n+1:3*n));
+        relErr = absErr/norm(x_half(2*n+1:3*n));
+        % If the error fulfills the prescribed tolerances or the step size
+        % is already equal to the minimal step size, then the step is
+        % accepted. If not, the step is "rejected", the step size halved,
+        % and we repeat the procedure.
+        if (absErr<=options.AbsTol && relErr<=options.RelTol) || (h<=options.MinStep)
+            info.Rejected_Steps = info.Rejected_Steps + j-1;
+            break;
+        end
+        h = max(h/2,options.MinStep);
+    end
     
-    x(:,i+1) = x_full;
+    % Use x_half for the approximation at t(i)+c(3)*h = t(i)+h.
+    x(:,i+1) = [x_full(1:2*n);x_half(2*n+1:3*n)];
     t(i+1) = t(i) + h;
     
-    err = norm(x_half(2*n+1:3*n)-x_full(2*n+1:3*n));
-    h = max(min([(options.RelTol/err)^(1/6),2*h,tspan(2)-t(i+1)]),h/2); 
+    % Estimate the next step size h.
+    h_newAbs = 0.9*h*(options.AbsTol/absErr)^(1/6);
+    h_newRel = 0.9*h*(options.RelTol/relErr)^(1/6);
+    h = min([h_newAbs,h_newRel,2*h]);
+    
+    % Impose lower and upper bounds on the step size h.
+    h = max(h,options.MinStep);
+    h = min([h,options.MaxStep,tspan(2)-t(i+1)]);
     
     if t(i+1)>=tspan(2)
         break
@@ -128,18 +224,17 @@ end
 % "cutting out" the approximate solution at t
 x=x(2*n+1:3*n,1:i+1);
 t=t(1:i+1);
-%-------------------------------------------------------------------------%
-% END OF solve_varshifted_lddae
-%-------------------------------------------------------------------------%
 
 %-------------------------------------------------------------------------%
-% perform EITHER a usual step of the method of steps with index reduction 
-% OR a long step, i.e. h>tau and x(t-tau) has to be predicted using
-% extrapolation of the last computed cubic polynomial, with index reduction
-%
-% NOTE: might be renamed to performStep later
+% primary supporting functions
 %-------------------------------------------------------------------------%
-function x_next = performLongStep(E,A,B,f,tau,phi,t,x,h,options)
+function x_next = timeStep(E,A,B,f,tau,phi,t,x,h,options)
+% Performs EITHER a usual step of the method of steps with index reduction 
+% OR a long step, i.e. h>tau and x(t-tau) has to be predicted using
+% extrapolation of the last computed cubic polynomial, with index
+% reduction. After extrapolating and computing the current cubic
+% polynomial, we will eventually get a new x(t-tau(t)) that differs from
+% the 
 [m,n] = size(E(0));
 % The vector c comes from the Butcher tableau of the 3-stage Radar IIa
 % method.
@@ -155,7 +250,7 @@ xtau=nan(n,3);
 
 % The FOR-loop is only used for long steps, i.e. if x(t-tau) has to be
 % extrapolated. During the loop, x(t-tau) will be corrected.
-for i=1:10
+for i=1:options.MaxCorrect
     if i==1
         % For each collocation point...
         isLongStep = [false,false,false];
@@ -163,12 +258,12 @@ for i=1:10
             tau_j = tau(t(end)+c(j)*h);
             if tau_j<0
                 error('THE DELAY tau IN x(t-tau) IS NEGATIVE!');
-            elseif abs(tau_j)<options.AbsTol
+            elseif tau_j<=options.LagTol;
                 % If the delay is vanishing or becoming to small, then we
                 % just interpret x(t-tau) as x(t).
                 xtau(:,j) = zeros(n,1);
                 % Calculate locally regularized form at t = t(i)-c(j)*h.
-                [E1,A1,~,f1,A2,~,f2] = regularize_varshift_strange_lddae(E,@(t)A(t)+B(t),@(t)zeros(m,n),f,tau,t(end)+c(j)*h,options);
+                [E1,A1,~,f1,A2,~,f2] = getRegularizedSystem(E,@(t)A(t)+B(t),@(t)zeros(m,n),f,tau,t(end)+c(j)*h,options);
                 Etij(:,:,j)=[E1;zeros(size(A2))];
                 Atij(:,:,j)=[A1;A2];
                 Btij(:,:,j)=zeros(n,n);
@@ -190,22 +285,24 @@ for i=1:10
                     X_tau=reshape(x(:,L+1),n,3);
                     h_tau = t(L+1)-t(L);
                     % Interpolate with Neville-Aitken.
-                    xtau(:,j) = poleval_neville_aitken(t(L)+[0;c]*h_tau,[x0_tau,X_tau],t_tau);
+                    xtau(:,j) = nevilleAitken(t(L)+[0;c]*h_tau,[x0_tau,X_tau],t_tau);
                 else
                     % t-tau(t) is greater than t(end), use extrapolation.                    
                     %disp('Performing long step.')
                     isLongStep(j) = true;
                     if size(x,2)<2
-                        error('NOT ENOUGH POINTS FOR EXTRAPOLATION')
+                        warning('NOT ENOUGH POINTS FOR EXTRAPOLATION')
+                        x_next=inf(3*n,1);
+                        return
                     end
                     x0_tau=x(2*n+1:3*n,end-1);
                     X_tau=reshape(x(:,end),n,3);
                     h_tau = t(end)-t(end-1);
                     % Extrapolate with Neville-Aitken.
-                    xtau(:,j) = poleval_neville_aitken(t(end-1)+[0;c]*h_tau,[x0_tau,X_tau],t_tau);
+                    xtau(:,j) = nevilleAitken(t(end-1)+[0;c]*h_tau,[x0_tau,X_tau],t_tau);
                 end
                 % Calculate locally regularized form at t = t(i)-c(j)*h.
-                [E1,A1,B1,f1,A2,B2,f2] = regularize_varshift_strange_lddae(E,A,B,f,tau,t(end)+c(j)*h,options);
+                [E1,A1,B1,f1,A2,B2,f2] = getRegularizedSystem(E,A,B,f,tau,t(end)+c(j)*h,options);
                 Etij(:,:,j)=[E1;zeros(size(A2))];
                 Atij(:,:,j)=[A1;A2];
                 Btij(:,:,j)=[B1;B2];
@@ -232,7 +329,7 @@ for i=1:10
         x0_tau=x(2*n+1:3*n,end);
         X_tau=reshape(x_next,n,3);
         % interpolate with Neville-Aitken
-        xtau_corrected(:,j) = poleval_neville_aitken(t(end)+[0;c]*h,[x0_tau,X_tau],t_tau);
+        xtau_corrected(:,j) = nevilleAitken(t(end)+[0;c]*h,[x0_tau,X_tau],t_tau);
     end
     
     % If the corrected x(t-tau) differs too much from the extrapolated one,
@@ -241,40 +338,14 @@ for i=1:10
         %fprintf('Corrected after %d steps.\n',i)
         return
     else
-        if i==10
-        fprintf('%d-th correction of x(t-tau(t)).\nRemaining relative residual: %e\nRemaining absolute residual: %e\n',i,norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))/norm(xtau_corrected(:,isLongStep))*h,norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))*h)
+        if i==options.MaxCorrect
+        fprintf('Correction of x(t-tau(t)) failed after MaxCorrect=%d iterations.\nRemaining relative residual: %e\nRemaining absolute residual: %e\n',i,norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))/norm(xtau_corrected(:,isLongStep))*h,norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))*h)
         end
         xtau(:,isLongStep)=xtau_corrected(:,isLongStep);
     end
 end
-
-function [E_1,A_1,B_1,f_1,A_2,B_2,f_2,mu,K,Z1,Z2,U1] = getRegularizedSystem(E,A,B,f,tau,ti,options)
-%regularize_shift_strange_lddae
-%
-%   Subroutine for regularizing the DDAE
-%           .
-%       E(t)x(t) = A(t)x(t) + B(t)x(t-tau) + f(t),     t0 <= t <= tf,
-%           x(t) = phi(t),                             t <= t0
-%
-%   with shift index bigger zero and strangeness index bigger zero.
-%
-%   The index reduction procedure was taken from
-%   -----------------------------------------------------------------------
-%   P. Kunkel, V. Mehrmann: Differential-Algebraic Equations, Chapter 6.1.
-%   -----------------------------------------------------------------------
-%
-%   INPUT   DATA TYPE       COMMENTS
-%   -----   ---------       --------
-%   E       fcn_handle      n-by-n leading matrix function
-%   A       fcn_handle      n-by-n matrix function
-%   B       fcn_handle      n-by-n matrix function
-%   f       fcn_handle      n-by-1 inhomogeneity function
-%   tau     double          the delay
-%   xtau    fcn_handle      xtau(t) = x(t-tau)
-%   ti      double          a time point
-%   options struct          see other codes for explanation
-
-% set the options
+function [E_1,A_1,B_1,f_1,A_2,B_2,f_2,mu,K] = getRegularizedSystem(E,A,B,f,tau,ti,options)
+%TODO more comments
 isConst = 0;
 K0 = 0;
 KMax = 3;
@@ -406,7 +477,6 @@ for K = 0:KMax
 end
 
 error('MAXIMAL NUMBER OF SHIFTS AND STRANGENESS REDUCTION STEPS REACHED. REGULARIZATION OF THE DDAE FAILED.')
-%   END OF LINEAR_DDAE_INDEX_REDUCTION
 
 %-------------------------------------------------------------------------%
 % auxiliary functions for getRegularizedSystem()
@@ -565,7 +635,7 @@ x_next=AA\bb;
 %-------------------------------------------------------------------------%
 % auxiliary function for interpolating/extrapolating
 %-------------------------------------------------------------------------%
-function px = poleval_neville_aitken(X,F,x)
+function px = nevilleAitken(X,F,x)
 n=length(X);
 % at first px is a container for the values in the Newton scheme
 px=F;

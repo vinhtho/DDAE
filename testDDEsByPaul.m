@@ -16,7 +16,7 @@ function testDDEsByPaul()
 % testEq1111()
 % testEq1112()
 % testEq1113()
-%testEq121()
+% testEq121()
 testEq123()
 %-------------------------------------------------------------------------%
 % Constant-delay scalar DDEs
@@ -242,7 +242,7 @@ phi=@(t)d ;
 tspan=[0,b^(1/1-c)];
 options.MaxStrIdx=0;
 options.MaxShift=0;
-[t,x] = solve_varshifted_lddae(E,A,B,f,tau,phi,tspan,options);
+[t,x] = coldedaNonCausal(E,A,B,f,tau,phi,tspan,options);
 % exact solution
 % NOT SOLVABLE WITH OUR CURRENT METHOD OF STEPS, SINCE THE DELAY IS SMALLER
 % THAN THE STEP SIZE
@@ -261,7 +261,7 @@ phi=@(t)1 ;
 tspan=[0,1]; % solve only until 0.9 because the delay becomes smaller as t goes to 1
 options.MaxStrIdx=0;
 options.MaxShift=0;
-[t,x] = solve_varshifted_lddae(E,A,B,f,tau,phi,tspan,options);
+[t,x] = coldedaNonCausal(E,A,B,f,tau,phi,tspan,options);
 % reference solution
 x1 = 2.271492555500812;
 rel_error=abs(x(end)-x1)/x1;
