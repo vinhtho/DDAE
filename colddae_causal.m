@@ -1,5 +1,5 @@
-function [t,x,info] = solve_causal_ddae(E,A,B,f,tau,phi,tspan,options)
-%SOLVE_CAUSAL_DDAE numerical solver for non-causal linear delay
+function [t,x,info] = colddae_causal(E,A,B,f,tau,phi,tspan,options)
+%COLDDAE_CAUSAL numerical solver for causal linear delay
 % differential-algebraic equations of the form
 %   E(t)\dot{x}(t)=A(t)x(t)+sum_i B_i(t)x(t-tau_i(t))+f(t)  for t\in(t0,tf]
 %             x(t)=phi(t)                                   for t<=t0
@@ -23,8 +23,10 @@ function [t,x,info] = solve_causal_ddae(E,A,B,f,tau,phi,tspan,options)
 %               'options.FieldName = FieldValue', see below
 %
 % @options
-%   Iter        Total number of time steps, default: 100.
-%   Step        Step size.
+%   Iter        The number of time steps, default: 100.
+%   Step        The (constant) step size of the Runge-Kutta method, must 
+%               be smaller than the smallest delay, default: 
+%               diff(tspan)/100.
 %
 %   AbsTol      Absolute tolerance, default: 1e-5.
 %   RelTol      Relative tolerance, default: 1e-5.
@@ -33,7 +35,9 @@ function [t,x,info] = solve_causal_ddae(E,A,B,f,tau,phi,tspan,options)
 %   MaxStrIdx   Upper bound for the strangeness index.
 %
 %   InitVal     Initial value, not necessarily consistent.
-%   IsConst     Are E and A constant matrices?
+%   IsConst     A boolean, true if E and A are constant (then the 
+%               strangeness-free form is computed only once, i.e. the 
+%               solver needs less computation time), default: false.
 %
 % @supporting functions:
 %   getRegularizedSystem
@@ -44,7 +48,7 @@ function [t,x,info] = solve_causal_ddae(E,A,B,f,tau,phi,tspan,options)
 %   nevilleAitken
 %
 % @return values:
-%   t           t(i) = t0+h_i with h_i the i-th step size.
+%   t           The discretization of tspan by Iter+1 equidistant points.
 %   x           numerical solution at the time nodes in t.
 %   info        Struct with information.
 %

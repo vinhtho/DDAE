@@ -31,7 +31,7 @@ function [t,x,info] = solve_noncausal_ddae(E,A,B,f,tau,phi,tspan,options)
 %               rejected time steps).
 %   MaxReject   Upper bound for the number of rejections per time step.
 %   MaxCorrect  Upper bound for the number of correction steps when using
-%               long steps (step size bigger than the lag).
+%               long steps (step size bigger than the lag), default: 10.
 %
 %   InitStep    Inital step size.
 %   MinStep     Lower bound for the step size, default: 0.
@@ -41,12 +41,13 @@ function [t,x,info] = solve_noncausal_ddae(E,A,B,f,tau,phi,tspan,options)
 %   RelTol      Relative tolerance, default: 1e-5.
 %   LagTol      Set x(t-tau(t)):=x(t) for tau(t)<=LagTol, default: 1e-5.
 %
-%   StrIdx      Lower bound for the strangeness index.
-%   MaxStrIdx   Upper bound for the strangeness index.
-%   Shift       Lower bound for the shift index.
-%   MaxShift    Upper bound for the shift index.
+%   StrIdx      Lower bound for the strangeness index, default: 0.
+%   MaxStrIdx   Upper bound for the strangeness index, default: 3
+%   Shift       Lower bound for the shift index, default: 0.
+%   MaxShift    Upper bound for the shift index, default: 3.
 %
-%   InitVal     Initial value, not necessarily consistent.
+%   InitVal     Initial value, not necessarily consistent, default: 
+%               phi(tspan(1)).
 %
 % @supporting functions:
 %   timeStep
@@ -112,8 +113,9 @@ info.Solver = 'solve_noncausal_ddae';
 info.Strangeness_index = 0;
 info.Shift_index = 0;
 info.Rejected_Steps = 0;
-
-info.Computation_time = 0;
+info.Number_of_differential_eqs = -1;
+info.Number_of_algebraic_eqs = -1;
+info.Computation_time = -1;
 
 %-------------------------------------------------------------------------%
 % some more input checks
@@ -176,10 +178,12 @@ t(1)=tspan(1);
 %-------------------------------------------------------------------------%
 % finding consistent initial value
 %-------------------------------------------------------------------------%
-[~,~,~,~,A2,B2,f2,mu,K] = getRegularizedSystem(E,A,B,f,tau,t0,options);
+[E1,~,~,~,A2,B2,f2,mu,K] = getRegularizedSystem(E,A,B,f,tau,t0,options);
 x(2*n+1:3*n,1)=x0-pinv(A2)*(A2*x0+B2*phi(t0-tau(t0))+f2);
 info.Strangeness_index = mu;
 info.Shift_index = K;
+info.Number_of_differential_eqs = size(E1,1);
+info.Number_of_algebraic_eqs = size(A2,1);
 
 %-------------------------------------------------------------------------%
 % main loop - time integration
@@ -421,7 +425,7 @@ for K = 0:KMax
         % extract the coefficients of the algebraic variables
         A_2 = Z2'*N;
         
-        T2= null2(A_2,tolR);
+        T2 = null2(A_2,tolR);
         
         % check if the number of (linearly independent) algebraic equations
         % a and differential equations d is equal to the number of

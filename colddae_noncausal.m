@@ -1,5 +1,5 @@
-function [t,x,info] = solve_noncausal_ddae(E,A,B,f,tau,phi,tspan,options)
-%SOLVE_NONCAUSAL_DDAE numerical solver for non-causal linear delay
+function [t,x,info] = colddae_noncausal(E,A,B,f,tau,phi,tspan,options)
+%COLDDAE_NONCAUSAL numerical solver for non-causal linear delay
 % differential-algebraic equations of the form
 %   E(t)\dot{x}(t) = A(t)x(t) + B(t)x(t-tau(t)) + f(t)  for t\in(t0,tf]
 %             x(t) = phi(t),                            for t<=t0
@@ -31,7 +31,7 @@ function [t,x,info] = solve_noncausal_ddae(E,A,B,f,tau,phi,tspan,options)
 %               rejected time steps).
 %   MaxReject   Upper bound for the number of rejections per time step.
 %   MaxCorrect  Upper bound for the number of correction steps when using
-%               long steps (step size bigger than the lag).
+%               long steps (step size bigger than the lag), default: 10.
 %
 %   InitStep    Inital step size.
 %   MinStep     Lower bound for the step size, default: 0.
@@ -41,12 +41,13 @@ function [t,x,info] = solve_noncausal_ddae(E,A,B,f,tau,phi,tspan,options)
 %   RelTol      Relative tolerance, default: 1e-5.
 %   LagTol      Set x(t-tau(t)):=x(t) for tau(t)<=LagTol, default: 1e-5.
 %
-%   StrIdx      Lower bound for the strangeness index.
-%   MaxStrIdx   Upper bound for the strangeness index.
-%   Shift       Lower bound for the shift index.
-%   MaxShift    Upper bound for the shift index.
+%   StrIdx      Lower bound for the strangeness index, default: 0.
+%   MaxStrIdx   Upper bound for the strangeness index, default: 3
+%   Shift       Lower bound for the shift index, default: 0.
+%   MaxShift    Upper bound for the shift index, default: 3.
 %
-%   InitVal     Initial value, not necessarily consistent.
+%   InitVal     Initial value, not necessarily consistent, default: 
+%               phi(tspan(1)).
 %
 % @supporting functions:
 %   timeStep
@@ -58,7 +59,7 @@ function [t,x,info] = solve_noncausal_ddae(E,A,B,f,tau,phi,tspan,options)
 %   nevilleAitken
 %
 % @return values:
-%   t           t(i) = t0+h_i with h_i the i-th step size.
+%   t           t(i+1) = t0+h_i with h_i the i-th step size.
 %   x           numerical solution at the time nodes in t.
 %   info        Struct with information.
 %

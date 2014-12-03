@@ -1,5 +1,5 @@
-function [t,x,info] = solve_causal_ddae(E,A,B,f,tau,phi,tspan,options)
-%SOLVE_CAUSAL_DDAE numerical solver for non-causal linear delay
+function [t,x,info] = colddae_causal(E,A,B,f,tau,phi,tspan,options)
+%COLDDAE_CAUSAL numerical solver for causal linear delay
 % differential-algebraic equations of the form
 %   E(t)\dot{x}(t)=A(t)x(t)+sum_i B_i(t)x(t-tau_i(t))+f(t)  for t\in(t0,tf]
 %             x(t)=phi(t)                                   for t<=t0
@@ -10,7 +10,6 @@ function [t,x,info] = solve_causal_ddae(E,A,B,f,tau,phi,tspan,options)
 % zero (differentiation index bigger than one). However, note that bigger
 % errors might occur if the strangeness index is too big, because
 % derivatives are approximated by finite differences.
-
 % The time stepping is based on the method of steps and using Radau IIA 
 % collocation using constant step size.
 %
@@ -24,8 +23,10 @@ function [t,x,info] = solve_causal_ddae(E,A,B,f,tau,phi,tspan,options)
 %               'options.FieldName = FieldValue', see below
 %
 % @options
-%   Iter        Total number of time steps, default: 100.
-%   Step        Step size.
+%   Iter        The number of time steps, default: 100.
+%   Step        The (constant) step size of the Runge-Kutta method, must 
+%               be smaller than the smallest delay, default: 
+%               diff(tspan)/100.
 %
 %   AbsTol      Absolute tolerance, default: 1e-5.
 %   RelTol      Relative tolerance, default: 1e-5.
@@ -34,7 +35,9 @@ function [t,x,info] = solve_causal_ddae(E,A,B,f,tau,phi,tspan,options)
 %   MaxStrIdx   Upper bound for the strangeness index.
 %
 %   InitVal     Initial value, not necessarily consistent.
-%   IsConst     Are E and A constant matrices?
+%   IsConst     A boolean, true if E and A are constant (then the 
+%               strangeness-free form is computed only once, i.e. the 
+%               solver needs less computation time), default: false.
 %
 % @supporting functions:
 %   getRegularizedSystem
@@ -45,7 +48,7 @@ function [t,x,info] = solve_causal_ddae(E,A,B,f,tau,phi,tspan,options)
 %   nevilleAitken
 %
 % @return values:
-%   t           t(i) = t0+h_i with h_i the i-th step size.
+%   t           The discretization of tspan by Iter+1 equidistant points.
 %   x           numerical solution at the time nodes in t.
 %   info        Struct with information.
 %
@@ -59,16 +62,17 @@ function [t,x,info] = solve_causal_ddae(E,A,B,f,tau,phi,tspan,options)
 %-------------------------------------------------------------------------%
 if ~exist('options','var'),options = {}; end
 
-% number of iterations and step size
-if isfield(options,'Iter')  
-    options.Step=diff(tspan)/options.Iter;
-else
-    options.Iter = 100;
-end
+% number of iterations and step size (if both are set, step size has
+% priority!)
 if isfield(options,'Step')      
     options.Iter = diff(tspan)/options.Step; 
 else
     options.Step = diff(tspan)/options.Iter;
+end
+if isfield(options,'Iter')  
+    options.Step=diff(tspan)/options.Iter;
+else
+    options.Iter = 100;
 end
 
 % tolerances
@@ -101,9 +105,11 @@ isConst = options.IsConst;
 
 % predefining info's fields
 info.Solver = 'solve_causal_ddae';
-info.Strangeness_index = 0;
+info.Strangeness_index = -1;
 info.Advanced = 0;
-info.Computation_time = 0;
+info.Number_of_differential_eqs = -1;
+info.Number_of_algebraic_eqs = -1;
+info.Computation_time = -1;
 
 %-------------------------------------------------------------------------%
 % some more input checks
@@ -167,8 +173,8 @@ end
 BXTAUF = @(s) B(s)*eval_all_hist_funcs(hist_funcs,s,tau(s),n,l)+f(s);
 [E1,A1,~,A2,g2,mu,Z1,Z2] = getRegularizedSystem(E,A,BXTAUF,t0,options);
 info.Strangeness_index = mu;
-info.Number_of_diff_equations = size(E1,1);
-info.Number_of_alg_equations = size(A2,1);
+info.Number_of_differential_eqs = size(E1,1);
+info.Number_of_algebraic_eqs = size(A2,1);
 
 % compute nearest consistent initial vector to x0
 x(2*n+1:3*n,1)=x0-pinv(A2)*(A2*x0+g2);
@@ -185,6 +191,7 @@ ftij=nan(n,1,3);
 %-------------------------------------------------------------------------%
 % Time integration.
 %-------------------------------------------------------------------------%
+tic
 for i=1:N
     % For each collocation point...
     for j=1:3
@@ -202,6 +209,7 @@ for i=1:N
                     warning('ONE DELAY BECAME SMALLER THAN THE STEP SIZE. LONG STEPS NOT IMPLEMENTED YET IN solve_''causal_ddae.m''. TERMINATING SOLVING PROCESS.')
                     t=t(1:i);
                     x=x(2*n+1:3*n,1:i);
+                    info.Computation_time = toc;
                     return;
                 end 
                 t_tau=t(t_tau_index);
@@ -243,7 +251,7 @@ for i=1:N
                 B_2 = Z2'*P;
                 if mu>0
                     if (max(max(abs(B_2(:,l*n+1:end))))>tolR*max(max(B_2),1))
-                        warning('ACCORDING TO THE CHOSEN TOLERANCE, THE SYSTEM IS OF ADVANCED TYPE, USING THE METHOD OF STEPS MIGHT PRODUCE LARGE ERRORS.')
+                        warning('ACCORDING TO THE CHOSEN TOLERANCE, THE SYSTEM IS VERY LIKELEY OF ADVANCED TYPE, USING THE METHOD OF STEPS MIGHT PRODUCE LARGE ERRORS.')
                         info.Advanced = true;
                     end
                 end
@@ -271,8 +279,10 @@ for i=1:N
     
 end
 
+
 % "cutting out" the approximate solution
 x=x(2*n+1:3*n,:);
+info.Computation_time = toc;
 
 function [E_1,A_1,f_1,A_2,f_2,mu,Z1,Z2] = getRegularizedSystem(E,A,f,ti,options)
 %regularize_strange_ldae
