@@ -1,5 +1,5 @@
-function [t,x,info] = coldedaNonCausal(E,A,B,f,tau,phi,tspan,options)
-%COLDEDA_NONCAUSAL numerical solver for non-causal linear delay
+function [t,x,info] = solve_noncausal_ddae(E,A,B,f,tau,phi,tspan,options)
+%SOLVE_NONCAUSAL_DDAE numerical solver for non-causal linear delay
 % differential-algebraic equations of the form
 %   E(t)\dot{x}(t) = A(t)x(t) + B(t)x(t-tau(t)) + f(t)  for t\in(t0,tf]
 %             x(t) = phi(t),                            for t<=t0
@@ -27,7 +27,7 @@ function [t,x,info] = coldedaNonCausal(E,A,B,f,tau,phi,tspan,options)
 %               'options.FieldName = FieldValue', see below
 %
 % @options
-%   MaxIter     Upper bound for the total number of time steps (including 
+%   MaxIter     Upper bound for the total number of time steps (excluding 
 %               rejected time steps).
 %   MaxReject   Upper bound for the number of rejections per time step.
 %   MaxCorrect  Upper bound for the number of correction steps when using
@@ -107,7 +107,14 @@ h = options.InitStep;
 N = floor(diff(tspan)/h);
 x0 = options.InitVal;
 
+% predefining info's fields
+info.Solver = 'solve_noncausal_ddae';
+info.Strangeness_index = 0;
+info.Shift_index = 0;
 info.Rejected_Steps = 0;
+info.Number_of_differential_eqs = -1;
+info.Number_of_algebraic_eqs = -1;
+info.Computation_time = -1;
 
 %-------------------------------------------------------------------------%
 % some more input checks
@@ -170,14 +177,17 @@ t(1)=tspan(1);
 %-------------------------------------------------------------------------%
 % finding consistent initial value
 %-------------------------------------------------------------------------%
-[~,~,~,~,A2,B2,f2,mu,K] = getRegularizedSystem(E,A,B,f,tau,t0,options);
+[E1,~,~,~,A2,B2,f2,mu,K] = getRegularizedSystem(E,A,B,f,tau,t0,options);
 x(2*n+1:3*n,1)=x0-pinv(A2)*(A2*x0+B2*phi(t0-tau(t0))+f2);
-info.Strangeness_Index = mu;
-info.Shift_Index = K;
+info.Strangeness_index = mu;
+info.Shift_index = K;
+info.Number_of_differential_eqs = size(E1,1);
+info.Number_of_algebraic_eqs = size(A2,1);
 
 %-------------------------------------------------------------------------%
 % main loop - time integration
 %-------------------------------------------------------------------------%
+tic
 for i=1:options.MaxIter
     % Compute approximation of x at t = t(i)+h.
     
@@ -224,6 +234,7 @@ end
 % "cutting out" the approximate solution at t
 x=x(2*n+1:3*n,1:i+1);
 t=t(1:i+1);
+info.Computation_time = toc;
 
 %-------------------------------------------------------------------------%
 % primary supporting functions
@@ -346,22 +357,13 @@ for i=1:options.MaxCorrect
 end
 function [E_1,A_1,B_1,f_1,A_2,B_2,f_2,mu,K] = getRegularizedSystem(E,A,B,f,tau,ti,options)
 %TODO more comments
-isConst = 0;
-K0 = 0;
-KMax = 3;
-mu0 = 0;
-muMax = 3;
-tolA = 1e-7;
-tolR = 1e-7;
-if exist('options','var')
-    if isfield(options,'AbsTol')    tolA=options.AbsTol; end
-    if isfield(options,'MaxShift')  KMax=options.MaxShift; end
-    if isfield(options,'MaxStrIdx') muMax=options.MaxStrIdx; end
-    if isfield(options,'RelTol')    tolR=options.RelTol; end
-    if isfield(options,'Shift')     K0=max(0,options.Shift); end
-    if isfield(options,'StrIdx')    mu0=options.StrIdx; end
-    if isfield(options,'x0')        x0=options.x0; end
-end
+tolA=options.AbsTol;
+KMax=options.MaxShift;
+muMax=options.MaxStrIdx;
+tolR=options.RelTol;
+K0=max(0,options.Shift);
+mu0=options.StrIdx;
+
 % tolerance for the matrix differential
 tol= tolR;
 E0 = E(ti);
@@ -422,7 +424,7 @@ for K = 0:KMax
         % extract the coefficients of the algebraic variables
         A_2 = Z2'*N;
         
-        T2= null2(A_2,tolR);
+        T2 = null2(A_2,tolR);
         
         % check if the number of (linearly independent) algebraic equations
         % a and differential equations d is equal to the number of
@@ -458,10 +460,7 @@ for K = 0:KMax
         B_1 = Z1'*P;
         if mu>0 && d>0
             if max(max(abs(B_1(:,n+1:end))))>tolR*max(max(B_1),1)
-                mess1 = sprintf(['\nmaxmax(B_1(:,n+1:end))/max(norm(B_1,1),1)) = ',num2str(max(max(abs(B_1(:,n+1:end))))/max(norm(B_1,1),1))]);
-                mess2 = sprintf(['\ntolerance                            = ',num2str(tolR)]);
-                mess3 = sprintf('\n\nACCORDING TO THE CHOSEN TOLERANCE, THE SYSTEM IS OF ADVANCED TYPE, USING THE METHOD OF STEPS MIGHT PRODUCE LARGE ERRORS.');
-                warning([mess1,mess2,mess3])
+                error('ACCORDING TO THE CHOSEN TOLERANCE, THE SYSTEM IS OF ADVANCED TYPE, USING THE METHOD OF STEPS MIGHT PRODUCE LARGE ERRORS.')
             end
         end
         B_1 = B_1(:,1:n);
@@ -477,6 +476,40 @@ for K = 0:KMax
 end
 
 error('MAXIMAL NUMBER OF SHIFTS AND STRANGENESS REDUCTION STEPS REACHED. REGULARIZATION OF THE DDAE FAILED.')
+
+%-------------------------------------------------------------------------%
+% auxiliary function for timeStep()
+%-------------------------------------------------------------------------%
+function x_next = solveLinSystem(Etij,Atij,ftij,x,h)
+n=size(Etij,1);
+% The matrix V is the inverse of A in the Butcher tableau of the Radar IIa 
+% method. 
+V=[ 3.224744871391589   1.167840084690405  -0.253197264742181
+    -3.567840084690405   0.775255128608412   1.053197264742181
+    5.531972647421811  -7.531972647421810   5.000000000000000 ];
+v0=-V*ones(3,1);
+AA=zeros(3*n);
+bb=zeros(3*n,1);
+for j=1:3
+    for k=1:3
+        AA((j-1)*n+1:j*n,(k-1)*n+1:k*n)=Etij(:,:,j)/h*V(j,k)-(j==k)*Atij(:,:,j);
+    end
+    bb((j-1)*n+1:j*n)=ftij(:,j)-Etij(:,:,j)/h*v0(j)*x(2*n+1:3*n,end);
+end
+% the solution is a vector with length 3*n, it consists of the 3 values
+% of the polynomial at the collocation points t(i)+c(j)*h, j=1..3
+x_next=AA\bb;
+function px = nevilleAitken(X,F,x)
+n=length(X);
+% at first px is a container for the values in the Newton scheme
+px=F;
+% beginning the Newton scheme, see Numerische Mathematik 1
+for i=1:n-1
+    for j=1:n-i
+        px(:,j)=((x-X(j))*px(:,j+1)-(x-X(j+i))*px(:,j))/(X(j+i)-X(j));
+    end
+end
+px=px(:,1);
 
 %-------------------------------------------------------------------------%
 % auxiliary functions for getRegularizedSystem()
@@ -538,7 +571,7 @@ for l = 1:mu
     NM(l*m+1:(l+1)*m,(l+1)*n+1:(l+2)*n) = dE(1:m,1:n);
 end
 NM(:,1:n) = -dA;
-function P = inflateB(B,tK,tau,mu,tol,m,n)
+function P  = inflateB(B,tK,tau,mu,tol,m,n)
 % builds the matrix
 %    _                                          _
 %   |                                            |
@@ -582,7 +615,7 @@ switch mu
             B3,3*B2*(1-tau1)-3*B1*tau2-B0*tau3,3*B1*(1-tau1)^2-3*B0*(1-tau1)*tau2,B0*(1-tau1)^3
             ];
 end
-function g = inflatef(f,t_shifted,K,mu,tol,m)
+function g  = inflatef(f,t_shifted,K,mu,tol,m)
 %
 % builds the vector
 %    _                  _
@@ -608,41 +641,50 @@ for j = 0:K
         g(((i-1)*m+1:i*m)+j*(mu+1)*m) = matrix_differential(f,t_shifted(j+1),i-1,tol,m,1);
     end
 end
-
-%-------------------------------------------------------------------------%
-% auxiliary function for solving the linear system
-%-------------------------------------------------------------------------%
-function x_next = solveLinSystem(Etij,Atij,ftij,x,h)
-n=size(Etij,1);
-% The matrix V is the inverse of A in the Butcher tableau of the Radar IIa 
-% method. 
-V=[ 3.224744871391589   1.167840084690405  -0.253197264742181
-    -3.567840084690405   0.775255128608412   1.053197264742181
-    5.531972647421811  -7.531972647421810   5.000000000000000 ];
-v0=-V*ones(3,1);
-AA=zeros(3*n);
-bb=zeros(3*n,1);
-for j=1:3
-    for k=1:3
-        AA((j-1)*n+1:j*n,(k-1)*n+1:k*n)=Etij(:,:,j)/h*V(j,k)-(j==k)*Atij(:,:,j);
+function dA = matrix_differential(A,t,k,tol,m,n)
+%Parameters 
+eps=0.01;
+j=0;
+delta=sqrt(eps*max(0.01,abs(t)));
+% [m,n]=size(A(t));
+temp=zeros(m,n,k+1);
+% dA=A(0);
+alpha=tol+1;
+while j<2 && alpha>tol
+    delta=delta/2;
+    dA_old=A(0);
+    for i=0:k
+%       temp(:,:,i+1)=(-1)^i*nchoosek(k,i)*A(t+(k/2-i)*delta);
+        temp(:,:,i+1)=(-1)^i*round(prod(((k-i+1):k)./(1:i)))*A(t+(k/2-i)*delta);
     end
-    bb((j-1)*n+1:j*n)=ftij(:,j)-Etij(:,:,j)/h*v0(j)*x(2*n+1:3*n,end);
+    dA=sum(temp,3)/delta^k;
+    alpha=norm(dA-dA_old);
+    j=j+1;
 end
-% the solution is a vector with length 3*n, it consists of the 3 values
-% of the polynomial at the collocation points t(i)+c(j)*h, j=1..3
-x_next=AA\bb;
- 
-%-------------------------------------------------------------------------%
-% auxiliary function for interpolating/extrapolating
-%-------------------------------------------------------------------------%
-function px = nevilleAitken(X,F,x)
-n=length(X);
-% at first px is a container for the values in the Newton scheme
-px=F;
-% beginning the Newton scheme, see Numerische Mathematik 1
-for i=1:n-1
-    for j=1:n-i
-        px(:,j)=((x-X(j))*px(:,j+1)-(x-X(j+i))*px(:,j))/(X(j+i)-X(j));
-    end
+if min(min(isfinite(dA)))==0
+    warning('ERROR IN maxtrix_differential.m!')
 end
-px=px(:,1);
+function Z  = null2(A,tol)
+[m,n] = size(A);
+[U,S,V]=svd(A,0);
+if m > 1
+    s = diag(S);
+  elseif m == 1
+      s = S(1);
+  else s = 0;
+end
+r = sum(s > max(m,n) * max(s(1),1) * tol);
+Z = V(:,r+1:n);
+function Q  = orth2(A,tol)
+if isempty(A)
+    Q=A;
+    return;
+end
+[U,S] = svd(A,0);
+[m,n] = size(A);
+if m > 1, s = diag(S);
+   elseif m == 1, s = S(1);
+   else s = 0;
+end
+r = sum(s > max(m,n) * max(s(1),1) * tol);
+Q = U(:,1:r);

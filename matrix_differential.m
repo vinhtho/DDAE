@@ -43,9 +43,9 @@ while j<2 && alpha>tol
     j=j+1;
 end
 
-% if min(min(isfinite(dA)))==0
-%     warning('Error in maxtrix_differential.m!')
-% end
+if min(min(isfinite(dA)))==0
+    warning('ERROR IN maxtrix_differential.m!')
+end
 
 end
 

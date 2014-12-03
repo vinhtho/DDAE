@@ -3,21 +3,21 @@ function testDDEsByPaul()
 %-------------------------------------------------------------------------%
 % Executing all function tests
 %-------------------------------------------------------------------------%
-% testEq111()
-% testEq112()
-% testEq113()
-% testEq114()
-% testEq115()
-% testEq116()
-% testEq117()
-% testEq118()
-% testEq119()
-% testEq1110()
-% testEq1111()
-% testEq1112()
-% testEq1113()
+testEq111()
+testEq112()
+testEq113()
+testEq114()
+testEq115()
+testEq116()
+testEq117()
+testEq118()
+testEq119()
+testEq1110()
+testEq1111()
+testEq1112()
+testEq1113()
 % testEq121()
-testEq123()
+% testEq123()
 %-------------------------------------------------------------------------%
 % Constant-delay scalar DDEs
 %-------------------------------------------------------------------------%
@@ -26,7 +26,7 @@ function testEq111()
 A=1;B=1;C=1; % parameters as in the paper!
 x_exact = @(t) C*sum(A.^(0:(round(t/B)+1)).*(t-((0:(round(t/B)+1))-1)*B).^(0:(round(t/B)+1))./factorial(0:(round(t/B)+1)));
 options.isConst=1;
-[t,x] = solve_lddae(@(t)1,@(t)0,@(t)A,@(t)0,B,@(t)C,[0,10],options);
+[t,x] = solve_lddae(@(t)1,@(t)0,@(t)A,@(t)0,@(t)B,@(t)C,[0,10],options);
 rel_error=abs(14640251/44800-x(end))/14640251*44800;
 fprintf('Equation 1.1.1: %1.2d\n',rel_error)
 function testEq112()
@@ -35,7 +35,7 @@ E=@(t)1;
 A=@(t)0;
 B=@(t)-1;
 f=@(t)0;
-tau=pi/2;
+tau=@(t)pi/2;
 phi=@sin;
 tspan=[0,10];
 options.isConst=1;
