@@ -186,7 +186,7 @@ info.Number_of_differential_eqs = size(E1,1);
 info.Number_of_algebraic_eqs = size(A2,1);
 
 %-------------------------------------------------------------------------%
-% Main loop: Time integration.
+% main loop - time integration
 %-------------------------------------------------------------------------%
 tic
 for i=1:options.MaxIter
@@ -326,7 +326,7 @@ for i=1:options.MaxCorrect
         gtij(:,j)=Btij(:,:,j)*xtau(:,j)+ftij(:,j);
     end
     % Solve the linear system.
-    x_next = solveLinSystem(Etij,Atij,gtij,x(:,end),h);
+    x_next = solveLinSystem(Etij,Atij,gtij,x,h);
     
     % No correction needed if we did not perform a long step.
     if sum(isLongStep)==0
@@ -356,9 +356,9 @@ for i=1:options.MaxCorrect
         xtau(:,isLongStep)=xtau_corrected(:,isLongStep);
     end
 end
-function x_next = solveLinSystem(Etij,Atij,ftij,xi,h)
+function x_next = solveLinSystem(Etij,Atij,ftij,x,h)
 % Supporting function for solving the linear system to determine the next
-% polyno
+% c polynomial.
 n=size(Etij,1);
 % The matrix V is the inverse of A in the Butcher tableau of the Radar IIa 
 % method. 
@@ -372,7 +372,7 @@ for j=1:3
     for k=1:3
         AA((j-1)*n+1:j*n,(k-1)*n+1:k*n)=Etij(:,:,j)/h*V(j,k)-(j==k)*Atij(:,:,j);
     end
-    bb((j-1)*n+1:j*n)=ftij(:,j)-Etij(:,:,j)/h*v0(j)*xi(2*n+1:3*n);
+    bb((j-1)*n+1:j*n)=ftij(:,j)-Etij(:,:,j)/h*v0(j)*x(2*n+1:3*n,end);
 end
 % the solution is a vector with length 3*n, it consists of the 3 values
 % of the polynomial at the collocation points t(i)+c(j)*h, j=1..3
@@ -548,73 +548,52 @@ for l = 1:mu
     NM(l*m+1:(l+1)*m,(l+1)*n+1:(l+2)*n) = dE(1:m,1:n);
 end
 NM(:,1:n) = -dA;
-function P  = inflateB(B,tK,tau,mu,tol,m,n)
-% Builds the matrix
-%    _                                          _
-%   |                                            |
-%   |   B                                        |
-%   |   .          .                             |
-%   |   B    B*(1-tau)                           |
-%   |   ..    .    .     ..          .           |
-%   |   B    2*B*(1-tau)-B*tau    B*(1-tau)^2    |
-%   |                                            |
-%   |_  etc.                                    _|
-%
-% i.e. the derivative array of B(t)*x(t-tau(t)).
-%
-% it is hard coded up to mu = 3 because we haven't found a nice forumla yet
-B0 = B(tK);
-B1 = matrix_differential(B,tK,1,tol,m,n);
-B2 = matrix_differential(B,tK,2,tol,m,n);
-B3 = matrix_differential(B,tK,3,tol,m,n);
-tau1 = matrix_differential(tau,tK,1,tol,1,1);
-tau2 = matrix_differential(tau,tK,2,tol,1,1);
-tau3 = matrix_differential(tau,tK,3,tol,1,1);
-switch mu
-    case 0
-        P = B(tK);
-    case 1
-        P = [
-            B0,zeros(m,n);
-            B1,B0*(1-tau1)
-            ];
-    case 2
-        P = [
-            B0,zeros(m,2*n);
-            B1,B0*(1-tau1),zeros(m,n);
-            B2,2*B1*(1-tau1)-B0*tau2,B0*(1-tau1)^2
-            ];
-    case 3
-        P = [
-            B0,zeros(m,3*n);
-            B1,B0*(1-tau1),zeros(m,2*n);
-            B2,2*B1*(1-tau1)-B0*tau2,B0*(1-tau1)^2,zeros(m,n);
-            B3,3*B2*(1-tau1)-3*B1*tau2-B0*tau3,3*B1*(1-tau1)^2-3*B0*(1-tau1)*tau2,B0*(1-tau1)^3
-            ];
-end
-function g  = inflatef(f,t_shifted,K,mu,tol,m)
+function g = inflatef(f,ti,mu,tol,m)
 % Builds the vector
-%    _                  _
-%   |                    |
-%   |   f (t_shifted(1)) |
-%   |   .                |
-%   |   f (t_shifted(1)) |
-%   |   .                |
-%   |   .                |
-%   |   .                |
-%   |    (mu)            |
-%   |   f (t_shifted(1)) |
-%   |   .                |
-%   |   .                |
-%   |   .                |
-%   |    (mu)            |
-%   |   f (t_shifted(K)) |
-%   |_                  _|.
-
-g = zeros((K+1)*(mu+1)*m,1);
-for j = 0:K
-    for i = 1:(mu+1)
-        g(((i-1)*m+1:i*m)+j*(mu+1)*m) = matrix_differential(f,t_shifted(j+1),i-1,tol,m,1);
+%    _        _
+%   |          |
+%   |   f(ti)  |
+%   |   .      |
+%   |   f(ti)  |
+%   |   ..     |
+%   |   f(ti)  |
+%   |  ...     |
+%   |   f(ti)  |
+%   |   .      |
+%   |   .      |
+%   |   .      |
+%   |    (mu)  |
+%   |   f (ti) |
+%   |_        _|.
+%
+g = zeros((mu+1)*m,1);
+for i = 1:(mu+1)
+    g(((i-1)*m+1:((i-1)+1)*m)) = matrixDifferential(f,ti,i-1,tol,m,1);
+end
+function P = inflateB(B,ti,mu,tol,m,n)
+% Builds the matrix
+%    _                                         _
+%   |                                           |
+%   |   B                                       |
+%   |   .                                       |
+%   |   B    B                                  |
+%   |   ..   .                                  |
+%   |   B   2B    B                             |
+%   |  ...   ..   .                             |
+%   |   B   3B   3B    B                        |
+%   |   .    .    .    .    .                   |
+%   |   .    .    .    .    .    .              |
+%   |   .    .    .    .    .    .    .         |
+%   |    (mu)                                   |
+%   |   B    .    .    .    .    .    .    B    |
+%   |_                                         _|.
+%
+P = zeros((mu+1)*m,(mu+1)*n);
+for i = 1:(mu+1)
+    P((i-1)*m+1:((i-1)+1)*m,1:n) = matrixDifferential( B,ti,i-1,tol,m,n);
+    for j=1:i-1
+        k = i-j-1;
+        P((i-1)*m+1:((i-1)+1)*m,j*n+1:(j+1)*n) = round(prod((i-j:i-1)./(1:j)))*P(k*m+1:(k+1)*m,1:n);
     end
 end
 function dA = matrixDifferential(A,t,k,tol,m,n)

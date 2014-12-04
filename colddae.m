@@ -11,9 +11,11 @@ elseif ~isfield(options,'IsCausal')
 end
 
 if options.IsCausal==1
-    [t,x,info]=solve_causal_ddae(E,A,B,f,tau,phi,tspan,options);
+    [t,x,info]=colddae_causal(E,A,B,f,tau,phi,tspan,options);
+elseif options.IsCausal==0
+    [t,x,info]=colddae_noncausal(E,A,B,f,tau,phi,tspan,options);
 else
-    [t,x,info]=solve_noncausal_ddae(E,A,B,f,tau,phi,tspan,options);
+    error('WRONG INPUT! PLEASE SELECT EITHER ''1'' OR ''0''!')
 end
 
 if nargout<=1
