@@ -55,7 +55,7 @@
 \footnotetext[1]{This work was supported by DFG Collaborative Research Centre 910,
 {\it Control of self-organizing nonlinear systems: Theoretical methods and concepts of application}}
 \footnotetext[2]{ Institut f\"{u}r Mathematik, MA 4-5, TU Berlin, Stra\ss e des 17. Juni 136, D-10623 Berlin,
-Germany; \{ha,vinhma,mehrmann\}@math.tu-berlin.de}
+Germany; \{ha,mavinh,mehrmann\}@math.tu-berlin.de}
 
 \maketitle
 
@@ -68,7 +68,7 @@ Germany; \{ha,vinhma,mehrmann\}@math.tu-berlin.de}
 \vskip 0.2cm
 
 \begin{abstract}
-We discuss the new solver COLDDAE for the numerical solution of initial value problems for linear differential-algebraic equations(DDAEs) with variable coefficients. The implementation is mainly 
+We discuss the new solver COLDDAE for the numerical solution of initial value problems for linear differential-algebraic equations (DDAEs) with variable coefficients. The implementation is mainly 
 based on the results introduced in \cite{HaM14}. The solver can deal with DDAEs in the full general situation, where the system can be either causal or noncausal. 
 The hidden type of the system (retarded, neutral, advanced) are determined within the solver, which can deal with not only retarded and neutral systems but also a 
 certain class of advanced DDAEs.
@@ -146,7 +146,7 @@ On the interval $[t_0+(j-1)\utau,t_0+j\utau]$, the function $x_j := x|_{[t_0+(j-
  E(t) \dot{x}_j(t) = A(t)x_j(t) + g_j(t), \quad \mbox{for all } t \in [t_0+(j-1)\utau,t_0+j\utau].
 \ee
 %
-Clearly, we see that the method of steps successfully handle the IVP \eqref{eq1.1} if and only if for every $j$, the corresponding IVP for the 
+Clearly, we see that the method of steps successfully handles the IVP \eqref{eq1.1} if and only if for every $j$, the corresponding IVP for the 
 DAE \eqref{eq3} has a unique solution.
 This requirement means that the solution $x$ at a current point $t$ depends only on the system \eqref{eq1.1a} 
 at current and past time points (i.e., $s \leq t$), but not future time points ($s > t$). We call this property \emph{causality}, and 
@@ -172,7 +172,7 @@ due to the noncausality of general DDAEs. Therefore, a regularization procedure 
 necessary. Note that for noncausal DDAEs of the form \eqref{eq1.1a}, the solvability analysis has only been discussed for 
 the single delay case, i.e., $k=1$. Even for multiple constant delays, i.e., $\tau_i(t) \equiv \tau_i$, the solvability analysis for noncausal DDAEs 
 is not entirely understood, \cite{HaM14,Ha15}. 
-The regularization procedure proposed in the package COLDDAE for causal (reps. noncausal) systems will be consider in Subsection \ref{Sec2.1} (resp. \ref{Sec2.2}) below.
+The regularization procedure proposed in the package COLDDAE for causal (reps. noncausal) systems will be considered in Subsection \ref{Sec2.1} (resp. \ref{Sec2.2}) below.
 
 \subsection{Regularization procedure for causal DDAEs with multiple delays}\label{Sec2.1}
 Inherited from the theory of DAEs, we see that even for causal DDAEs, the numerical integration requires a reformulation of the original system in such a way that one can 
@@ -203,7 +203,7 @@ which has the same solution set as the DAE \eqref{eq4}, where the matrix-valued 
 For the numerical determination of the strangeness index and the strangeness-free formulation \eqref{s-free form}, we refer the readers to 
 \cite{KunMRW97,KunMS05}.
 
-Now we apply the strangeness-free formulation to the DDAE \eqref{eq1.1a}, which assumed to be causal, to obtain the strangeness-free DDAE
+Now we apply the strangeness-free formulation to the DDAE \eqref{eq1.1a}, which is assumed to be causal, to obtain the strangeness-free DDAE
 %
 \be\label{eq5}
  \m{\hE_{1}(t) \\ 0 \\ 0} \dot{x}(t) \!=\! \m{\hA_{1}(t) \\ \hA_{2}(t) \\ 0} x(t) \!+\!
@@ -378,9 +378,9 @@ strangeness-free DDAE \eqref{eq16}. To keep the brevity of the paper, we will no
 It has been observed in \cite{HaM14} that the main difference between causal DDAEs and noncausal DDAEs, in the determination of the 
 strangeness-free DDAEs, are:
 \begin{enumerate}
- \item[i)] Size of the derivative arrays \eqref{eq7} for noncausal DDAEs is bigger than for causal DDAEs.
- \item[ii)] The set of differential equation in the strangeness-free DDAEs of noncausal DDAEs, cannot be selected from the original DDAEs, but must be 
- selected from the derivative arrays \eqref{eq7}.
+ \item[i)] The size of the derivative arrays \eqref{eq7} for noncausal DDAEs is bigger than for causal DDAEs.
+ \item[ii)] For noncausal DDAEs the set of differential equations in the strangeness-free formulation cannot be selected from the original DDAE, but must be 
+ selected from the derivative array \eqref{eq7}.
 \end{enumerate}
 
 \section{Algorithms in COLDDAE}
@@ -454,7 +454,7 @@ where ${\cal L}_j(\tet)$ is the Lagrange polynomial of degree $s$ satisfying ${\
 The existence and uniqueness, and the convergence results for the numerical approximation $\mathrm{X}_{\pi}$ are stated in the following theorem.
 
 \begin{theorem}\label{Thm6.1}
-Consider the IVP \eqref{eq1.1} and assume that it is uniquely solver and of either retarded or neutral type. 
+Consider the IVP \eqref{eq1.1} and assume that it is uniquely solvable and of either retarded or neutral type. 
 For $N \in \hro{N}$ and $s \geq 1$, define the mesh $\pi$ and the collocation points $t_{ij}$, $j=1,\dots,s$ as in \eqref{eq3.3}. 
 Then the following assertions hold.
 \begin{compactenum}
@@ -476,7 +476,7 @@ For the proof see Theorem 4, \cite{Hau97} or Theorem 4.2, \cite{GugH07}.
 
 \section{Using COLDDAE}
 
-The package COLDDAE contains two smaller solvers for handling specific situations: {\tt colddae\_causal} can deal with linear, causal DDAEs with multiple time varying delays, 
+The package COLDDAE contains two solvers for handling specific situations: {\tt colddae\_causal} can deal with linear, causal DDAEs with multiple time varying delays, 
 while {\tt colddae\_noncausal} can handle both causal and noncausal DDAEs, but it is only applicable for systems with single delay. 
 In the following we will describe the parameters inside these solvers.
 
@@ -556,7 +556,7 @@ The following fields are applicable in this solver:
 \item {\tt MaxStrIdx}\quad    Upper bound for the strangeness index,  default: {\tt 3}.
 \item {\tt Shift}\quad       Lower bound for the strangeness index,  default: {\tt 0}.
 \item {\tt MaxShift}\quad    Upper bound for the strangeness index,  default: {\tt 3}.
-\item {\tt InitVal  }\quad    Initial value, not necessarily consistent,  default: {\tt phi(tspan(1))}.
+\item {\tt InitVal  }\quad    Initial value, not necessarily consistent,  default: $\phi(t_0)$.
 \end{itemize}
 
 \subsubsection{Output parameters}
@@ -567,7 +567,72 @@ The following fields are applicable in this solver:
 \end{itemize}
 
 \section{Numerical experiments}
-Ongoing!
+\subsection{Experiment 1}Linear DDE with constant coefficients and constant signle delay:
+\begin{equation}
+\begin{aligned}
+\dot{x}_1(t) & = x_3(t),\\
+\dot{x}_2(t) & = x_4(t),\\
+\dot{x}_3(t) & = -2mx_2(t)+(1+m^2)(-1)^mx_1(t-\pi),\\
+\dot{x}_4(t) & = -2mx_1(t)+(1+m^2)(-1)^mx_2(t-\pi),
+\end{aligned}
+\end{equation}
+for $t>0$ and $x(t)=\phi(t)$ for $t\leq 0$ with 
+\begin{equation}
+\begin{aligned}
+{\phi}_1(t) & = \sin(t)\cos(mt),\\
+{\phi}_2(t) & = \cos(t)\sin(mt),\\
+{\phi}_3(t) & = \cos(t)\cos(mt)-m\sin(t)\sin(mt),\\
+{\phi}_4(t) & =m\cos(t)\cos(mt)-\sin(t)\sin(mt).\\
+\end{aligned}
+\end{equation}
+{\bf Analytical solution} \quad $x(t)=\phi(t)$ for $t>0$.\\
+
+{\bf Error of the numerical approximation}\\
+\includegraphics[width=\textwidth]{plot_dde149}
+
+\subsection{Experiment 2}Linear DDAE with constant coefficients and constant single delay
+\begin{equation}
+\begin{aligned}
+\begin{bmatrix}
+1&-1\\
+0&0 
+\end{bmatrix}
+\dot{x}(t) &=
+\begin{bmatrix}
+1& 0\\
+0&1 
+\end{bmatrix}
+ x(t) + 
+\begin{bmatrix}
+0& 0\\
+1&0
+\end{bmatrix}
+ x(t-1),&&t>0,\\
+x(t) &= \phi(t)=
+\begin{bmatrix}
+1\\
+0 
+\end{bmatrix}
+&&t \leq 0.
+\end{aligned}
+\end{equation}
+
+{\bf Analytical solution}\quad Note that the DDAE is equivalent to the DDE $\dot{x}_1(t)=x(t)+\dot{x}(t-1)$ , which is solved by
+\begin{align*}
+x_1(t)=\left\{
+\begin{array}{ll}
+e^t & 0<t\leq1\\
+(t-1)e^{t-1}+e^t & 1<t\leq2\\
+\tfrac12(t^2-2t)e^{t-2}+(t-1)e^{t-1}+e^t & 2<t\leq3\\
+\tfrac16(t^3-3t^2-3t+9)e^{t-3}+\tfrac12 (t^2-2t)e^{t-2}+(t-1)e^{t-1}+e^t& 3<t\leq4
+\end{array}
+\right.,
+\end{align*}
+and
+$x_2(t)=x_1(t-1)$.\\
+
+{\bf Error of the numerical approximation}\\
+\includegraphics[width=\textwidth]{plot_dde214}
 
 \section{Future work}
 Possible improvements include
