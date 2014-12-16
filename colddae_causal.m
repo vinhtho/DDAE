@@ -64,15 +64,15 @@ if ~exist('options','var'),options = {}; end
 
 % number of iterations and step size (if both are set, step size has
 % priority!)
-if isfield(options,'Step')
-    options.Iter = diff(tspan)/options.Step;
-else
-    options.Step = diff(tspan)/options.Iter;
-end
 if isfield(options,'Iter')
     options.Step=diff(tspan)/options.Iter;
 else
     options.Iter = 100;
+end
+if isfield(options,'Step')
+    options.Iter = diff(tspan)/options.Step;
+else
+    options.Step = diff(tspan)/options.Iter;
 end
 
 % tolerances
@@ -344,7 +344,7 @@ for mu = mu0:muMax
     if a+d>=n
         break;
     end
-    if mu >= mumax
+    if mu >= muMax
         error('MAXIMAL NUMBER OF SHIFTS AND STRANGENESS REDUCTION STEPS REACHED. REGULARIZATION OF THE DDAE FAILED.')
     end
 end

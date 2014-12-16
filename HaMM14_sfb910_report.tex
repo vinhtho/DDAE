@@ -108,13 +108,13 @@ We further assume that $\otau < \infty$. Typically, to form an IVP for the DDAE 
 We assume that the IVP \eqref{eq1.1} has a unique solution $x\in C(\mathbb{I},\mathbb{R}^n)$.\\
 \esq
 %
-The theoretical analysis of IVPs of the form \eqref{eq1.1} has been discussed in \cite{HaMS14,HaM14}. 
+The theoretical analysis for IVPs of the form \eqref{eq1.1} has been discussed in \cite{HaMS14,HaM14}. 
 We, however, will recall only the appropriate parts of these works to make the procedure of computing the solution of \eqref{eq1.1} transparent.
 The most important concepts presented in these works are the causality, the system type, the shift index and the strangeness index of the DDAE \eqref{eq1.1a}.
 
 Under the assumption on the existence and uniqueness of the analytical solution of the IVP \eqref{eq1.1}, the implementation of the new solver is based on the construction 
-of the regularization procedure introduced in \cite{HaM14}, which first determines the shift index, strangeness index and then transforms the DDAE \eqref{eq1.1a} into 
-the regular, strangeness-free formulation with the same solution set. Using this regularization procedure, we can also compute a consistent initial function and apply the 
+of the regularization procedure introduced in \cite{HaM14}, which first determines the shift index, the strangeness index and then transforms the DDAE \eqref{eq1.1a} into 
+the regular, strangeness-free formulation with the same solution set. Using this regularization procedure, we can also compute a consistent initial function and can apply the 
 well-known integration schemes for the resulting regular, strangeness-free DDAEs. 
 Having seen the advantages of collocation Runge-Kutta methods for DDAEs, see \cite{GugH01,GugH07}, in our solver we have implemented collocation Runge-Kutta (RK) schemes. 
 % and backward differentiation formula (BDF) methods.
@@ -157,7 +157,7 @@ In contrast to causal DDAEs, this approach is not feasible for noncausal systems
 consider for example equation 
 %
 \be\label{eq2.1}
-  0 \cdot \dot{x}(t) = 0 \cdot x(t) - x(t-\tau) + f(t), \quad \mbox{for all } t\in (0,\infty),
+  0 \cdot \dot{x}(t) = 0 \cdot x(t) - x(t-\tau) + f(t), \quad \mbox{for all } t\in (0,\infty).
 \ee
 %
 The method of steps applied to the DDAE \eqref{eq2.1} results in a sequence of undetermined DAEs of the form
@@ -200,6 +200,7 @@ one can extract the so-called \emph{strangeness-free formulation}
 \ee
 %
 which has the same solution set as the DAE \eqref{eq4}, where the matrix-valued function $\m{\hE_1 \\ \hA_2}$ has pointwise full row rank.
+We also call $\mu$ the strangeness index of the pair $(E,A)$. 
 For the numerical determination of the strangeness index and the strangeness-free formulation \eqref{s-free form}, we refer the readers to 
 \cite{KunMRW97,KunMS05}.
 
@@ -212,7 +213,7 @@ Now we apply the strangeness-free formulation to the DDAE \eqref{eq1.1a}, which 
  \!+\! \m{\hf_{1}(t) \\ \hf_{2}(t) \\ \hf_{3}(t)}, \quad \pm{d \\ a \\ v}
 \ee
 %
-where $\mu=\mu(E,A)$ is the strangeness index of the function pair $(E,A)$ and the matrix-valued function $\m{\hE_1 \\ \hA_2}$ has pointwise full row rank.
+where $\mu=\mu(E,A)$ is the strangeness index of the pair $(E,A)$ and the function $\m{\hE_1 \\ \hA_2}$ has pointwise full row rank.
 Sizes of the block row equations are $d$, $a$, $v$. Due to the causality of the DDAE \eqref{eq1.1a}, it follows that $\m{\hE_1 \\ \hA_2}$ is pointwise 
 nonsingular.
 For the DAE \eqref{eq4}, the numerical solution $x(t)$ is obtained by integrating the strangeness-free formulation \eqref{s-free form}, which is more 
@@ -230,7 +231,7 @@ In these cases, the strangeness-free DDAE \eqref{eq5} takes the form
 %
 The integration strategy we use for causal, retarded/neutral DDAEs of the form \eqref{eq1.1a} is: first, determine the strangeness-free formulation 
 \eqref{eq6}, and second, apply numerical methods to \eqref{eq6} to compute $x(t)$.\\
-For the determination of the strangeness-free DDAE \eqref{eq5}, we use the derivative arrays for DDAEs as follows
+For the determination of the strangeness-free DDAE \eqref{eq6}, we use the derivative arrays for DDAEs as follows
 %
 \bens
  E(t)\dot{x}(t) - A(t)x(t)  &=& B(t)x(t-\vtau(t)) + f(t), \\
@@ -248,18 +249,18 @@ M z(t) = P z(t-\vtau(t)) + g,
 where 
 %
 \bens
-M &:=& 
+&& M := 
      \m{-A(t)    & E(t) & & & \\ 
     -\dot{A}(t)  & \dot{E}(t)-A(t) & E(t) & & \\ 
     -\ddot{A}(t) & \ddot{E}(t)-2\dot{A}(t) & 2\dot{E}(t)-A(t) & E(t) & \\ 
      & \vdots & & \ddots & \ddots & \\ 
 -A^{({\mu})}(t)  & E^{({\mu})}(t)-{\mu}A^{({\mu}-1)}(t) & \dots  & \dots & {\mu}\dot{E}(t)-A(t) & E(t)}, \\
-P  &:=& \m{B(t) &          &   &         &  & 0\\ 
+&& P  := \m{B(t) &          &   &         &  & 0\\ 
  \dot{B}(t)    & B(t)        &   &         &  & 0\\ 
 \ddot{B}(t)    & 2\dot{B}(t)\left( t-\vtau(t) \right)^{(1)} & B(t)\left( t-\vtau(t) \right)^{(2)} &         &  & 0\\ 
   \vdots    & & \ddots & \ddots & & \vdots \\ 
 B^{({\mu})}(t)   & \binom{\mu}{1} B^{({\mu}-1)}(t) \left( t-\vtau(t) \right)^{(1)} & \dots & \binom{\mu}{\mu-1}\dot{B}(t)& B(t) \left( t-\vtau(t) \right)^{(\mu-1)} & 0} , \\
-z(t) &:=& \m{x(t) \\ \dot{x}(t) \\ \vdots \\ x^{(\mu+1)}(t)}, 
+&& z(t) := \m{x(t) \\ \dot{x}(t) \\ \vdots \\ x^{(\mu+1)}(t)}, 
 \quad g := \m{f(t) \\ \dot{f}(t) \\ \vdots \\ f^{(\mu+1)}(t)}.  
 \eens
 %
@@ -286,9 +287,11 @@ that
 We consider the following spaces and matrices
 %
 \be\label{eq11}
-\begin{array}{ccc}
+\begin{array}{ccc} 
  T_2 & \mbox{ basis of } & \ker(Z^T_2 E), \\
- Z_1 & \mbox{ basis of } & \range(E T_2). \\
+ Z_1 & \mbox{ basis of } & \range(E T_2), \\
+ Y_1 & \mbox{ basis of } & \range(Z^T_1 E), \\
+ Y_2 & \mbox{ basis of } & \range(Z^T_2 M(:,1:n)). \\
 \end{array}
 \ee
 %
@@ -302,12 +305,12 @@ In summary, we obtain the strangeness-free DDAE
 %
 \be\label{eq12}
  \bsp{
- Z_1^T E(t)\dot{x}(t) &= Z_1^T A(t)x(t) + Z_1^T B(t) x(t-\vtau(t)) + Z_1^T f(t). \\
- Z^T_2 M(:,1:n) x(t)  &= Z^T_2 P(:,1:kn) x(t-\vtau(t)) + Z^T_2 g,
+ Y^T_1 Z_1^T E(t)\dot{x}(t) &= Y^T_1 Z_1^T A(t)x(t) + Y^T_1 Z_1^T B(t) x(t-\vtau(t)) + Y^T_1 Z_1^T f(t), \\
+ Y^T_2 Z^T_2 M(:,1:n) x(t)  &= Y^T_2 Z^T_2 P(:,1:kn) x(t-\vtau(t)) + Y^T_2 Z^T_2 g,
  }
 \ee
 %
-where $\m{Z_1^T E(t) \\ Z^T_2 M(:,1:n)}$ is nonsingular. 
+where $\m{Y^T_1 Z_1^T E(t) \\ Y^T_2 Z^T_2 M(:,1:n)}$ is nonsingular. 
 
 \subsection{Regularization procedure for noncausal DDAEs with single delay}\label{Sec2.2}
 In order to handle noncausal DDAEs with single delay, in \cite{HaM14}, the author proposed the concept of \emph{shift index} as follows. 
@@ -318,10 +321,10 @@ Consider the IVP \eqref{eq1.1}. For each $t\in \mathbb{I}$, the minimum number $
 %
 \be\label{eq13}
 \bsp{
-  E(\th{0}) \dot{x}(\th{0}) &= A(\th{0}) x(\th{0}) + B(\th{0})) x(\th{0} - \tau(\th{0})), \\  
-  E(\th{1}) \dot{x}(\th{1}) &= A(\th{1}) x(\th{1}) + B(\th{1})) x(\th{1} - \tau(\th{1})), \\  
+  E(\th{0}) \dot{x}(\th{0}) &= A(\th{0}) x(\th{0}) + B(\th{0}) x(\th{0} - \tau(\th{0})), \\  
+  E(\th{1}) \dot{x}(\th{1}) &= A(\th{1}) x(\th{1}) + B(\th{1}) x(\th{1} - \tau(\th{1})), \\  
                             & \ \vdots  \\
-  E(\th{\ka}) \dot{x}(\th{\ka}) &= A(\th{\ka}) x(\th{\ka}) + B(\th{\ka})) x(\th{\ka} - \tau(\th{\ka})),                            
+  E(\th{\ka}) \dot{x}(\th{\ka}) &= A(\th{\ka}) x(\th{\ka}) + B(\th{\ka}) x(\th{\ka} - \tau(\th{\ka})),                            
 }
 \ee
 %
@@ -331,9 +334,9 @@ where the sequence $\{\th{j}| j\geq 0\}$, starting with $\th{0}=t$, is determine
  \th{j+1} - \tau(\th{j+1}) = \th{j}, \quad \mbox{for all } j\geq 0,
 \ee
 %
-is called the \emph{shift index} of the DDAE \eqref{eq1.1a} with respect to $t$.\\
+is called the \emph{shift index} of the DDAE \eqref{eq1.1a} with respect to $t$.
 \end{definition}
-%
+
 To guarantee the existence and uniqueness of the sequence $\{\th{j}| j\geq 0\}$ in Definition \ref{shift index}, we assume that for every $s \in (t_0,t_f)$, the equation
 %
 \be\label{shift equation}
@@ -346,7 +349,7 @@ has a unique solution on the time interval $(s,t_f)$.
 In the single delay case, if the DDAE \eqref{eq1.1a} is causal then the shift index $\ka$ is $0$ for all $t \in [t_0,t_f]$.
 \end{remark}
 
-Using \eqref{shift equation}, we can rewrite the shift-inflated system \eqref{eq13} as
+Using \eqref{eq14}, we can rewrite the shift-inflated system \eqref{eq13} as
 %
 \be\label{eq15}
 \bsp{
@@ -372,14 +375,14 @@ As shown in \cite{HaM14}, assuming that the DDAE \eqref{eq1.1a} is not of advanc
  \m{\hB_{1}(\th{0}) \\ \hB_{2}(\th{0})} x(\th{0}-\tau(\th{0})) \!+\! \m{\hf_{1}(\th{0}) \\ \hf_{2}(\th{0})}, \ \pm{d \\ a}
 \ee
 %
-where $\m{\hE_{1}(\th{0}) \\ \hA_{2}(\th{0})}$ is nonsingular, $d+a=n$.\\
-Analogous to the case of causal DDAEs, we build the derivative arrays \eqref{eq7} for the system \eqref{eq15}, and extract from it the 
+where $\m{\hE_{1}(\th{0}) \\ \hA_{2}(\th{0})}$ is nonsingular, i.e. $d+a=n$.\\
+Analogous to the case of causal DDAEs, we build the derivative arrays \eqref{eq7} for system \eqref{eq15}, and extract from it the 
 strangeness-free DDAE \eqref{eq16}. To keep the brevity of the paper, we will not repeat the process.
 It has been observed in \cite{HaM14} that the main difference between causal DDAEs and noncausal DDAEs, in the determination of the 
 strangeness-free DDAEs, are:
 \begin{enumerate}
  \item[i)] The size of the derivative arrays \eqref{eq7} for noncausal DDAEs is bigger than for causal DDAEs.
- \item[ii)] For noncausal DDAEs the set of differential equations in the strangeness-free formulation cannot be selected from the original DDAE, but must be 
+ \item[ii)] For noncausal DDAEs the set of differential equations in the strangeness-free formulation cannot be selected from the original DDAE \eqref{eq1.1a}, but must be 
  selected from the derivative array \eqref{eq7}.
 \end{enumerate}
 
@@ -390,7 +393,7 @@ First, we observe that the resulting system of the regularization procedure for 
  \m{\hE_1(t) \\ 0} \dot{x}(t) = \m{\hA_1(t) \\ \hA_2(t)} x(t) + \m{\hB_1(t) \\ \hB_2(t)} x(t-\vtau(t)) + \m{\hga_1(t) \\ \hga_2(t)}, 
 \ee
 %
-where $\vtau(t)$ is a scalar function $\tau(t)$ in the noncausal case. We now apply numerical methods to \eqref{eq3.1} to determine $x(t)$. 
+where $\vtau(t)$ is a scalar function in the noncausal case. We now apply numerical methods to \eqref{eq3.1} to determine $x(t)$. 
 For notational convenience, in the the following we consider only the single delay case, i.e. 
 $\vtau \equiv \tau$. The solver, however, can handle the multiple delays case, too.\\
 Adopted from the solver RADAR5 \cite{GugH07}, we use the Radau scheme for the numerical integration, which is given by nodes
@@ -523,7 +526,8 @@ The following fields are applicable in this solver:
 
 \subsection{{\tt colddae\_noncausal} - a solver for linear, noncausal DDAEs with single delay}
 
-Again, we assume that the strangeness index of $(E,A)$ is not too big. The shift index must be less or equal to 3 (because of hard coding, could be arbitrary in principle).
+Again, we assume that the strangeness index of $(E,A)$ is not too big. The shift index must be less or equal to 3 (because of hard coding, could be arbitrary in principle). 
+In this solver, we have implemented step size control and so-called long steps, i.e. the step size may become greater than the delay. 
 
 \subsubsection{Input parameters}
 \begin{itemize}
@@ -548,8 +552,9 @@ The following fields are applicable in this solver:
 \item {\tt MaxReject}\quad      Upper bound for the number of rejections per time step, default: {\tt 100}.
 \item{\tt MaxCorrect}\quad  Upper bound for the number of correction steps when using
          long steps (step size bigger than the lag), default: {\tt10}.
-\item {\tt Step}\quad        The (constant) step size of the Runge-Kutta method, must be smaller than
-          $\min_{i=1,\ldots,k}\tau_i(t)$ for all $t\in[t_0,t_f]$, default: $\frac{t_f-t_0}{100}$.
+\item {\tt InitStep}\quad        The initial step size of the Runge-Kutta method, default: $\frac{t_f-t_0}{100}$.
+\item {\tt MinStep}\quad         A lower bound for the step size, default: $\tt 0$.
+\item {\tt MaxStep}\quad      An upper bound for the step size, default: $\tt inf$.
 \item {\tt AbsTol}\quad       Absolute tolerance, default:  {\tt 1e-5}.
 \item {\tt RelTol}\quad       Relative tolerance, default:  {\tt 1e-5}.
 \item {\tt StrIdx}\quad       Lower bound for the strangeness index,  default: {\tt 0}.
@@ -568,7 +573,9 @@ The following fields are applicable in this solver:
 
 \section{Numerical experiments}
 \subsection{Experiment 1}Linear DDE with constant coefficients and constant signle delay:
-\begin{equation}
+%
+\bsq\label{eq20}
+\begin{equation}\label{eq20a}
 \begin{aligned}
 \dot{x}_1(t) & = x_3(t),\\
 \dot{x}_2(t) & = x_4(t),\\
@@ -577,7 +584,7 @@ The following fields are applicable in this solver:
 \end{aligned}
 \end{equation}
 for $t>0$ and $x(t)=\phi(t)$ for $t\leq 0$ with 
-\begin{equation}
+\begin{equation}\label{eq20b}
 \begin{aligned}
 {\phi}_1(t) & = \sin(t)\cos(mt),\\
 {\phi}_2(t) & = \cos(t)\sin(mt),\\
@@ -585,54 +592,62 @@ for $t>0$ and $x(t)=\phi(t)$ for $t\leq 0$ with
 {\phi}_4(t) & =m\cos(t)\cos(mt)-\sin(t)\sin(mt).\\
 \end{aligned}
 \end{equation}
+\esq
+%
 {\bf Analytical solution} \quad $x(t)=\phi(t)$ for $t>0$.\\
-
-{\bf Error of the numerical approximation}\\
-\includegraphics[width=\textwidth]{plot_dde149}
+The relative error of the numerical solution of the IVP \eqref{eq20} is presented in Figure \ref{fig_Paul}.
 
 \subsection{Experiment 2}Linear DDAE with constant coefficients and constant single delay
-\begin{equation}
+%
+\begin{equation}\label{eq21}
 \begin{aligned}
-\begin{bmatrix}
+\m{
 1&-1\\
 0&0 
-\end{bmatrix}
+}
 \dot{x}(t) &=
-\begin{bmatrix}
+\m{
 1& 0\\
 0&1 
-\end{bmatrix}
- x(t) + 
-\begin{bmatrix}
+}
+x(t) + 
+\m{
 0& 0\\
 1&0
-\end{bmatrix}
- x(t-1),&&t>0,\\
-x(t) &= \phi(t)=
-\begin{bmatrix}
+}
+x(t-1), && \mbox{for all } t>0,\\
+\phi(t) &=
+\m{
 1\\
 0 
-\end{bmatrix}
-&&t \leq 0.
+},
+&& \mbox{for all } t \leq 0.
 \end{aligned}
 \end{equation}
-
-{\bf Analytical solution}\quad Note that the DDAE is equivalent to the DDE $\dot{x}_1(t)=x(t)+\dot{x}(t-1)$ , which is solved by
+%
+{\bf Analytical solution}\quad Note that the DDAE is equivalent to the neutral DDE $\dot{x}(t)=x(t)+\dot{x}(t-1)$ . The IVP \eqref{eq21} possesses the unique solution 
+$x(t)= \m{x_1(t) \\ x_2(t)}$ given by
 \begin{align*}
-x_1(t)=\left\{
+x_1(t)=
+\bc
 \begin{array}{ll}
-e^t & 0<t\leq1\\
-(t-1)e^{t-1}+e^t & 1<t\leq2\\
-\tfrac12(t^2-2t)e^{t-2}+(t-1)e^{t-1}+e^t & 2<t\leq3\\
-\tfrac16(t^3-3t^2-3t+9)e^{t-3}+\tfrac12 (t^2-2t)e^{t-2}+(t-1)e^{t-1}+e^t& 3<t\leq4
+e^t & \mbox{ for all } 0<t\leq1, \\
+(t-1)e^{t-1}+e^t & \mbox{ for all } 1<t\leq2, \\
+\tfrac12(t^2-2t)e^{t-2}+(t-1)e^{t-1}+e^t & \mbox{ for all } 2<t\leq3,\\
+\tfrac16(t^3-3t^2-3t+9)e^{t-3}+\tfrac12 (t^2-2t)e^{t-2}+(t-1)e^{t-1}+e^t & \mbox{ for all } 3<t\leq4,
 \end{array}
-\right.,
+\ec
 \end{align*}
 and
-$x_2(t)=x_1(t-1)$.\\
+$x_2(t)=x_1(t-1)$. The relative error of the numerical solution of the IVP \eqref{eq20} is also presented in Figure \ref{fig_Paul}.
 
-{\bf Error of the numerical approximation}\\
-\includegraphics[width=\textwidth]{plot_dde214}
+\begin{figure}[h]
+ \centering
+ \includegraphics[scale=0.8]{Paul_149_and_214.pdf}
+ % Paul_149.pdf: 0x0 pixel, 300dpi, 0.00x0.00 cm, bb= 
+ \caption{Relative error of the solution of the IVP \eqref{eq20} (left) and \eqref{eq21} (right).}
+ \label{fig_Paul}
+\end{figure}
 
 \section{Future work}
 Possible improvements include
@@ -644,9 +659,8 @@ Possible improvements include
 
 %-------------------------------------------------------------------------------
 \bibliographystyle{plain}
-\bibliography{HaMM14}
-
-%\bibliography{Phi_Nov_05}
+%\bibliography{HaMM14}
+\bibliography{Phi_Dec_05_14}
 %-------------------------------------------------------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}

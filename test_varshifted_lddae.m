@@ -2,28 +2,26 @@
 % strangeness-index: 1
 % shift index = 1
 
-P=rand(2);
-Q=rand(2);
-
-E=@(t) P*[
+clear;
+E=@(t) [
     1   0   
     0   0   
-    ]*Q;
-A=@(t) P*[
+    ];
+A=@(t) [
     0   0  
     1   0  
-    ]*Q;
-B=@(t) P*[
+    ];
+B=@(t) [
     0   1   
     0   1   
-    ]*Q;
+    ];
 
 phi=@(t)[
     cos(t)
     sin(t)
     ];
 
-tau=@(t) 0.5099-sin(t)/2;
+tau=@(t) 1-sin(t)/2;
 t0=0;
 % consistent initial vector
 x0=[1 0]';
@@ -45,14 +43,13 @@ options.StrIdx = 1;
 options.MaxShift = 1;
 options.MaxStrIdx = 1;
 
-options.isConst = 0;
-
-options.StepSize = 0.1;
+options.IsCausal = 0;
 
 tic
-[t,x]=solve_varshifted_lddae(E,A,B,f,tau,phi,[0,10],options);
+[t,x,info]=colddae(E,A,B,f,tau,phi,[0,10],options);
 % [t,x]=solve_shifted_lddae(E,A,B,f,tau,phi,[0,10],options);
 toc
 
-semilogy(t,abs(x-xe(t)));
-title('absolute error')
+semilogy(t,abs(x-xe(t))./abs(xe(t)),'o-');
+grid
+legend('rel. error of x_1(t)','rel. error of x_2(t)');

@@ -25,7 +25,7 @@ options.InitStep=tau(alpha)/2;
 options.MinStep=0.1;
 options.MaxIdx=0;
 options.MaxShift=0;
-[t,x,info] = colddae_noncausal(E,A,B,f,tau,phi,tspan,options);
+[t,x,info] = coldedaNonCausal(E,A,B,f,tau,phi,tspan,options);
 abs_error=max(abs(x-phi(t)));
 fprintf('Equation 1.2.7: Abs error %1.2d\n',abs_error)
 
@@ -52,21 +52,12 @@ phi=@(t)[
     cos(t).*cos(m*t)-m*sin(t).*sin(m*t)
     m*cos(t).*cos(m*t)-sin(t).*sin(m*t)
     ];
-phi12=@(t)[
-    sin(t).*cos(m*t)
-    cos(t).*sin(m*t)
-    ];
 tspan=[0,5];
 options.MaxIdx=0;
 options.MaxShift=0;
-[t,x,info] = colddae_noncausal(E,A,B,f,tau,phi,tspan,options);
+[t,x,info] = coldedaNonCausal(E,A,B,f,tau,phi,tspan,options);
 abs_error=max(max(abs(x-phi(t))));
 fprintf('Equation 1.4.9: Abs error %1.2d\n',abs_error)
-figure
-semilogy(t,abs(x(1:2,:)-phi12(t))./abs(phi12(t)),'o-')
-grid
-legend('error of x_1(t)','error of x_2(t)')
-title('colddae\_noncausal: relative error')
 
 function testEq1412()
 m=2;
@@ -91,7 +82,7 @@ phi=@(t)[
 tspan=[0,5];
 options.MaxIdx=0;
 options.MaxShift=0;
-[t,x,info] = colddae_noncausal(E,A,B,f,tau,phi,tspan,options);
+[t,x,info] = coldedaNonCausal(E,A,B,f,tau,phi,tspan,options);
 abs_error=max(max(abs(x-phi(t))));
 fprintf('Equation 1.4.12: Abs error %1.2d\n',abs_error)
 
@@ -111,10 +102,10 @@ f=@(t)zeros(2,1);
 tau=@(t)1;
 phi=@(t)[1;1];
 tspan=[0,4];
-% options.MinStep=0.1;
+options.MinStep=0.1;
 options.MaxIdx=0;
 options.MaxShift=0;
-[t,x,info] = colddae_noncausal(E,A,B,f,tau,phi,tspan,options);
+[t,x,info] = coldedaNonCausal(E,A,B,f,tau,phi,tspan,options);
 xe1 = @(t) exp(t);
 xe2 = @(t) (t-1).*exp(t-1)+xe1(t);
 xe3 = @(t) 0.5*(t.^2-2*t).*exp(t-2)+xe2(t);
@@ -122,12 +113,6 @@ xe4 = @(t) 1/6*(t.^3-3*t.^2-3*t+9).*exp(t-3)+xe3(t);
 xe=@(t) xe1(t).*(0<=t).*(t<=1) + xe2(t).*(1<t).*(t<=2) + xe3(t).*(2<t).*(t<=3) + xe4(t).*(3<t).*(t<=4);
 rel_error=max(abs(x(1,:)-xe(t))./abs(xe(t)));
 fprintf('Equation 2.1.4: Rel error %1.2d\n',rel_error)
-figure
-semilogy(t,abs(x(1,:)-xe(t))./abs(xe(t)),'o-')
-grid
-xlabel('t')
-ylabel('x_1(t)')
-title('colddae\_noncausal: relative error')
 
 function testEq224()
 %some trouble with this one, still need to look into that
@@ -151,7 +136,7 @@ options.MaxStep=0.01;
 options.LagTol = 0;
 options.MaxIdx=0;
 options.MaxShift=0;
-[t,x,info] = colddae_noncausal(E,A,B,f,tau,phi,tspan,options);
+[t,x,info] = coldedaNonCausal(E,A,B,f,tau,phi,tspan,options);
 x_ref = 0.8788261256272320;
 abs_error=abs(x(1,end)-x_ref);
 fprintf('Equation 2.2.4: Abs error %1.2d\n',abs_error)
