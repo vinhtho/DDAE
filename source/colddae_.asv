@@ -1,4 +1,4 @@
-function [t,x,info] = colddae_noncausal(E,A,B,f,tau,phi,tspan,options)
+function [t,x,info] = colddae_(E,A,B,f,tau,phi,tspan,options)
 %COLDDAE_NONCAUSAL numerical solver for non-causal linear delay
 % differential-algebraic equations of the form
 %   E(t)\dot{x}(t) = A(t)x(t) + B(t)x(t-tau(t)) + f(t)  for t\in(t0,tf]
@@ -97,16 +97,59 @@ if ~isfield(options,'MaxShift')  options.MaxShift = 3; end
 if ~isfield(options,'InitVal')   options.InitVal = phi(tspan(1)); end
 
 %-------------------------------------------------------------------------%
-% defining some parameters
+% checking the input data and defining some parameters
 %-------------------------------------------------------------------------%
-t0 = tspan(1);
+% checking E 
 if not(isa(E,'function_handle'))
     error('E must be a function handle.'); 
 end
 [m,n] = size(E(0));
+% checking A
+if not(isa(A,'function_handle'))
+    error('A must be a function handle.'); 
+end
+if or(size(A(0),1)~=m,size(A(0),2)~=n)
+    error('A has wrong size.')
+end
+% checking f
+if not(isa(f,'function_handle'))
+    error('f must be a function handle.'); 
+end
+if or(size(f(0),1)~=m,size(f(0),2)~=1)
+    error('f has wrong size.')
+end
+% checking tau
+if not(isa(tau,'function_handle'))
+    error('Delay tau must be a function handle.'); 
+end
+l = numel(tau(tspan(1)));
+% checking B
+if not(isa(B,'function_handle'))
+    error('B must be a function handle.'); 
+end
+if or(size(B(0),1)~=m,size(B(0),2)~=l*n)
+    error('B has wrong size.')
+end
+% checking phi
+if or(size(phi(0),1)~=n,size(phi(0),2)~=1)
+    error('phi has wrong size.')
+end
+% checking tspan
+if numel(tspan)~=2
+    error('tspan must be a vector of length 2.')
+end
+t0 = tspan(1);
+% checking the options
+if options.MaxShift<options.Shift
+    error('MaxShift must not be less than Shift.')
+end
+if options.MaxStrIdx<options.StrIdx
+    error('MaxStrIdx must not be less than StrIdx.')
+end
+if norm(size(options.InitVal)-[n,1])>0
+    error('The initial value has wrong size.')
+end
 h = options.InitStep;
-N = floor(diff(tspan)/h);
-x0 = options.InitVal;
 
 % predefining info's fields
 info.Solver = 'solve_noncausal_ddae';
@@ -116,47 +159,6 @@ info.Rejected_Steps = 0;
 info.Number_of_differential_eqs = -1;
 info.Number_of_algebraic_eqs = -1;
 info.Computation_time = -1;
-
-%-------------------------------------------------------------------------%
-% some more input checks
-%-------------------------------------------------------------------------%
-% checking tau
-if or(not(isa(tau,'function_handle')),numel(tau(0))>1)
-    error('Delay tau must be a scalar function.'); 
-end
-% checking A
-if not(isa(A,'function_handle'))
-    error('A must be a function handle.'); 
-end
-if or(size(A(0),1)~=m,size(A(0),2)~=n)
-    error('A has wrong size.')
-end
-% checking B
-if not(isa(B,'function_handle'))
-    error('B must be a function handle.'); 
-end
-if or(size(B(0),1)~=m,size(B(0),2)~=n)
-    error('B has wrong size.')
-end
-% checking f
-if not(isa(f,'function_handle'))
-    error('f must be a function handle.'); 
-end
-if or(size(f(0),1)~=m,size(f(0),2)~=1)
-    error('f has wrong size.')
-end
-% checking phi
-if or(size(phi(0),1)~=n,size(phi(0),2)~=1)
-    error('phi has wrong size.')
-end
-% checking the options
-if options.MaxShift<options.Shift
-    error('MaxShift must not be less than Shift.')
-end
-if options.MaxStrIdx<options.StrIdx
-    error('MaxStrIdx must not be less than StrIdx.')
-end
-
 
 %-------------------------------------------------------------------------%
 % preparation for the main loop
@@ -169,17 +171,23 @@ c=[(4-sqrt(6))/10; (4+sqrt(6))/10; 1];
 % DDAE's solution at the time points t(j-1)+c(1)*h, t(j-1)+c(2)*h and t(j)
 % in the first n, second n and third n entries, respectively, where h
 % denotes the (current) step size.
-x=nan(3*n,N+1);
+x=nan(3*n,options.MaxIter+1);
 x(1:n,1)=phi(t0+(c(1)-1)*h);
 x(n+1:2*n,1)=phi(t0+(c(2)-1)*h);
-t=nan(1,N+1);
+t=nan(1,options.MaxIter+1);
 t(1)=tspan(1);
 
 %-------------------------------------------------------------------------%
 % finding consistent initial value
 %-------------------------------------------------------------------------%
 [E1,~,~,~,A2,B2,f2,mu,K] = getRegularizedSystem(E,A,B,f,tau,t0,options);
-x(2*n+1:3*n,1)=x0-pinv(A2)*(A2*x0+B2*phi(t0-tau(t0))+f2);
+x0 = options.InitVal;
+tau0 = tau(t0);
+xtau0 = nan(l*n,1);
+for k=1:l
+    xtau0((k-1)*n+1:k*n) = phi(t0-tau0(k));
+end
+x(2*n+1:3*n,1)=x0-pinv(A2)*(A2*x0+B2*xtau0+f2);
 info.Strangeness_index = mu;
 info.Shift_index = K;
 info.Number_of_differential_eqs = size(E1,1);
@@ -208,7 +216,7 @@ for i=1:options.MaxIter
         % accepted. If not, the step is "rejected", the step size halved,
         % and we repeat the procedure.
         if (absErr<=options.AbsTol && relErr<=options.RelTol) || (h<=options.MinStep)
-            info.Rejected_Steps = info.Rejected_Steps + j-1;
+            info.Rejected_Steps = info.Rejected_Steps + (j-1);
             break;
         end
         h = max(h/2,options.MinStep);
@@ -255,73 +263,87 @@ c=[(4-sqrt(6))/10; (4+sqrt(6))/10; 1];
 % t_ij = T(i)+h*c(j).
 Etij=nan(n,n,3);
 Atij=nan(n,n,3);
-Btij=nan(n,n,3);
 ftij=nan(n,3);
 gtij=nan(n,3);
-xtau=nan(n,3);
+l=numel(tau(0)); % The number of delays.
+Btij=nan(n,l*n,3);
+xtau=nan(l*n,3);
 
-% The FOR-loop is only used for long steps, i.e. if x(t-tau) has to be
-% extrapolated. During the loop, x(t-tau) will be corrected.
+% A matrix of booleans used for logical indexing, used in order to
+% adress only those entries which have been computed by long steps.
+isLongStep = false(l*n,3);
+
+% The FOR-loop with i as running parameter is only used for long steps, 
+% i.e. if x(t-tau) has to be extrapolated. During the loop, x(t-tau) will 
+% be corrected.
 for i=1:options.MaxCorrect
     if i==1
         % For each collocation point...
-        isLongStep = [false,false,false];
         for j=1:3
+            
+            % Calculate locally regularized form at t = t(i)+c(j)*h.
+            [E1,A1,B1,f1,A2,B2,f2] = getRegularizedSystem(E,A,B,f,tau,t(end)+c(j)*h,options);
+            Etij(:,:,j)=[E1;zeros(size(A2))];
+            Atij(:,:,j)=[A1;A2];
+            Btij(:,:,j)=[B1;B2];
+            ftij(:,j)=[f1;f2];
+            
+            % Compute x(t-tau_k(t)) for k=1:l.
             tau_j = tau(t(end)+c(j)*h);
-            if tau_j<0
-                error('THE DELAY tau IN x(t-tau) IS NEGATIVE!');
-            elseif tau_j<=options.LagTol;
-                % If the delay is vanishing or becoming to small, then we
-                % just interpret x(t-tau) as x(t).
-                xtau(:,j) = zeros(n,1);
-                % Calculate locally regularized form at t = t(i)-c(j)*h.
-                [E1,A1,~,f1,A2,~,f2] = getRegularizedSystem(E,@(t)A(t)+B(t),@(t)zeros(m,n),f,tau,t(end)+c(j)*h,options);
-                Etij(:,:,j)=[E1;zeros(size(A2))];
-                Atij(:,:,j)=[A1;A2];
-                Btij(:,:,j)=zeros(n,n);
-                ftij(:,j)=[f1;f2];
-            else
-                % The delay is big enough and determine x(t-tau).
-                t_tau = t(end)+c(j)*h-tau_j;
-                if t_tau<t(1)
-                    % t-tau(t) is less than t0, so we use the history function.
-                    xtau(:,j) = phi(t_tau);
-                elseif t_tau*(1+eps)<t(end)
-                    % t-tau(t) is in the interval [t(1),t(end)]
-                    % find the biggest time node smaller than t_i+c_j*h-tau
-                    L = find(t_tau<t,1)-1;
-                    % If t_i+c_j*h-tau is not a node point, i.e. not in t, then
-                    % we have to interpolate. We use a polynomial of degree 3, 
-                    % so we need 4 data points.
-                    x0_tau=x(2*n+1:3*n,L);
-                    X_tau=reshape(x(:,L+1),n,3);
-                    h_tau = t(L+1)-t(L);
-                    % Interpolate with Neville-Aitken.
-                    xtau(:,j) = nevilleAitken(t(L)+[0;c]*h_tau,[x0_tau,X_tau],t_tau);
+            % For each delay...
+            for k=1:l
+                if tau_j(k)<0
+                    error('THE DELAY tau IN x(t-tau) IS NEGATIVE!');
+                elseif tau_j(k)<=options.LagTol;
+                    % If the delay is vanishing or becoming to small, then we
+                    % just interpret x(t-tau) as x(t).
+                    xtau((k-1)*n+1:k*n,j) = zeros(n,1);
+                    % Calculate locally regularized form at t = t(i)-c(j)*h.
+                    [E1,A1,~,f1,A2,~,f2] = getRegularizedSystem(E,@(t)A(t)+B(t),@(t)zeros(m,l*n),f,tau,t(end)+c(j)*h,options);
+                    Etij(:,:,j)=[E1;zeros(size(A2))];
+                    Atij(:,:,j)=[A1;A2];
+                    Btij(:,:,j)=zeros(n,n);
+                    ftij(:,j)=[f1;f2];
                 else
-                    % t-tau(t) is greater than t(end), use extrapolation.                    
-                    %disp('Performing long step.')
-                    isLongStep(j) = true;
-                    if size(x,2)<2
-                        warning('NOT ENOUGH POINTS FOR EXTRAPOLATION')
-                        x_next=inf(3*n,1);
-                        return
+                    % The delay is big enough and we determine x(t-tau_k).
+                    t_tau = t(end)+c(j)*h-tau_j(k);
+                    if t_tau<t(1)
+                        % t-tau_k(t) is less than t0, so we use the history function.
+                        xtau((k-1)*n+1:k*n,j) = phi(t_tau);
+                    elseif t_tau*(1+eps)<t(end)
+                        % t-tau_k(t) is in the interval [t(1),t(end)]
+                        % find the biggest time node smaller than
+                        % t_i+c_j*h-tau_k
+                        L = find(t_tau<t,1)-1;
+                        % If t_i+c_j*h-tau_k is not a node point, i.e. not in t, then
+                        % we have to interpolate. We use a polynomial of degree 3, 
+                        % so we need 4 data points.
+                        x0_tau=x(2*n+1:3*n,L);
+                        X_tau=reshape(x(:,L+1),n,3);
+                        h_tau = t(L+1)-t(L);
+                        % Interpolate with Neville-Aitken.
+                        xtau((k-1)*n+1:k*n,j) = nevilleAitken(t(L)+[0;c]*h_tau,[x0_tau,X_tau],t_tau);
+                    else
+                        % t-tau_k(t) is greater than t(end), use
+                        % extrapolation.                    
+                        isLongStep((k-1)*n+1:k*n,j) = true;
+                        if size(x,2)<2
+                            warning('NOT ENOUGH POINTS FOR EXTRAPOLATION')
+                            x_next=inf(3*n,1);
+                            return
+                        end
+                        x0_tau=x(2*n+1:3*n,end-1);
+                        X_tau=reshape(x(:,end),n,3);
+                        h_tau = t(end)-t(end-1);
+                        % Extrapolate with Neville-Aitken.
+                        xtau((k-1)*n+1:k*n,j) = nevilleAitken(t(end-1)+[0;c]*h_tau,[x0_tau,X_tau],t_tau);
                     end
-                    x0_tau=x(2*n+1:3*n,end-1);
-                    X_tau=reshape(x(:,end),n,3);
-                    h_tau = t(end)-t(end-1);
-                    % Extrapolate with Neville-Aitken.
-                    xtau(:,j) = nevilleAitken(t(end-1)+[0;c]*h_tau,[x0_tau,X_tau],t_tau);
                 end
-                % Calculate locally regularized form at t = t(i)-c(j)*h.
-                [E1,A1,B1,f1,A2,B2,f2] = getRegularizedSystem(E,A,B,f,tau,t(end)+c(j)*h,options);
-                Etij(:,:,j)=[E1;zeros(size(A2))];
-                Atij(:,:,j)=[A1;A2];
-                Btij(:,:,j)=[B1;B2];
-                ftij(:,j)=[f1;f2];
-            end
-        end
-    end
+            end % for k
+        end % for j
+    end % if i==1
+    
+    % Compute g(t) = B(t)*x(t-tau)+f(t).
     for j=1:3
         gtij(:,j)=Btij(:,:,j)*xtau(:,j)+ftij(:,j);
     end
@@ -329,7 +351,7 @@ for i=1:options.MaxCorrect
     x_next = solveLinSystem(Etij,Atij,gtij,x(:,end),h);
     
     % No correction needed if we did not perform a long step.
-    if sum(isLongStep)==0
+    if not(isLongStep)
         return
     end
     
@@ -337,25 +359,30 @@ for i=1:options.MaxCorrect
     % just computed new cubic polynomial.
     xtau_corrected = xtau;
     for j=1:3
-        t_tau = t(end)+c(j)*h-tau(t(end)+c(j)*h);
-        x0_tau=x(2*n+1:3*n,end);
-        X_tau=reshape(x_next,n,3);
-        % interpolate with Neville-Aitken
-        xtau_corrected(:,j) = nevilleAitken(t(end)+[0;c]*h,[x0_tau,X_tau],t_tau);
+        tau_j = tau(t(end)+c(j)*h);
+        for k=1:l
+            if isLongStep(k*n,j)
+                t_tau = t(end)+c(j)*h-tau_j(k);
+                x0_tau=x(2*n+1:3*n,end);
+                X_tau=reshape(x_next,n,3);
+                % interpolate with Neville-Aitken
+                xtau_corrected((k-1)*n+1:k*n,j) = nevilleAitken(t(end)+[0;c]*h,[x0_tau,X_tau],t_tau);
+            end
+        end
     end
     
     % If the corrected x(t-tau) differs too much from the extrapolated one,
     % we recompute the polynomial using xtau_corrected instead of xtau. 
-    if or(norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))/norm(xtau_corrected(:,isLongStep))*h<options.RelTol,norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))*h<options.AbsTol)
+    if or(norm(xtau_corrected(isLongStep)-xtau(isLongStep))/norm(xtau_corrected(isLongStep))*h<options.RelTol,norm(xtau_corrected(isLongStep)-xtau(isLongStep))*h<options.AbsTol)
         %fprintf('Corrected after %d steps.\n',i)
         return
     else
         if i==options.MaxCorrect
-        fprintf('Correction of x(t-tau(t)) failed after MaxCorrect=%d iterations.\nRemaining relative residual: %e\nRemaining absolute residual: %e\n',i,norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))/norm(xtau_corrected(:,isLongStep))*h,norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))*h)
+            fprintf('Correction of x(t-tau(t)) failed after MaxCorrect=%d iterations.\nRemaining relative residual: %e\nRemaining absolute residual: %e\n',i,norm(xtau_corrected(isLongStep)-xtau(isLongStep))/norm(xtau_corrected(isLongStep))*h,norm(xtau_corrected(isLongStep)-xtau(isLongStep))*h)
         end
-        xtau(:,isLongStep)=xtau_corrected(:,isLongStep);
+        xtau(isLongStep)=xtau_corrected(isLongStep);
     end
-end
+end%for i
 function x_next = solveLinSystem(Etij,Atij,ftij,xi,h)
 % Supporting function for solving the linear system to determine the next
 % polyno
@@ -390,12 +417,13 @@ end
 px=px(:,1);
 function [E_1,A_1,B_1,f_1,A_2,B_2,f_2,mu,K] = getRegularizedSystem(E,A,B,f,tau,ti,options)
 %TODO more comments
-tolA=options.AbsTol;
 KMax=options.MaxShift;
 muMax=options.MaxStrIdx;
 tolR=options.RelTol;
 K0=max(0,options.Shift);
 mu0=options.StrIdx;
+
+l = numel(tau(ti));
 
 % tolerance for the matrix differential
 tol= tolR;
@@ -425,6 +453,9 @@ for K = 0:KMax
     for mu = 0:muMax
         NMP((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+2)*n)+K*(muMax+2)*n) = inflateEA(E,A,t_shifted(K+1),mu,tolR);
         if K>0
+            if l>1
+                error('REGULARIZATION NOT IMPLEMENTED YET FOR MULTIPLE DELAYS AND SHIFT INDEX BIGGER THAN ZERO.')
+            end
             NMP((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+1)*n)+(K-1)*(muMax+2)*n) = -inflateB(B,t_shifted(K+1),tau,mu,tolR,m,n);
             if K<K0
                 continue;
@@ -478,7 +509,7 @@ for K = 0:KMax
             % update the selector Z2
             Z2 = Z2*Y2;
         end
-        B_2 = Z2'*P(:,1:n);
+        B_2 = Z2'*P(:,1:l*n);
         
         % extract the coefficients of the differential variables
         E_1 = Z1'*M;
@@ -492,11 +523,11 @@ for K = 0:KMax
         % part
         B_1 = Z1'*P;
         if mu>0 && d>0
-            if max(max(abs(B_1(:,n+1:end))))>tolR*max(max(B_1),1)
+            if max(max(abs(B_1(:,l*n+1:end))))>tolR*max(max(B_1),1)
                 error('ACCORDING TO THE CHOSEN TOLERANCE, THE SYSTEM IS OF ADVANCED TYPE, USING THE METHOD OF STEPS MIGHT PRODUCE LARGE ERRORS.')
             end
         end
-        B_1 = B_1(:,1:n);
+        B_1 = B_1(:,1:l*n);
         
         % extract the algebraic and differential parts for f and the
         % differential parts for E, A and B
