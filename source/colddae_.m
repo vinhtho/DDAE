@@ -158,7 +158,7 @@ end
 h = options.InitStep;
 
 % predefining info's fields
-info.Solver = 'solve_noncausal_ddae';
+info.Solver = 'colddae_';
 info.Strangeness_index = 0;
 info.Shift_index = 0;
 info.Rejected_Steps = 0;

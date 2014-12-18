@@ -104,7 +104,7 @@ x0 = options.InitVal;
 isConst = options.IsConst;
 
 % predefining info's fields
-info.Solver = 'solve_causal_ddae';
+info.Solver = 'colddae_causal';
 info.Strangeness_index = -1;
 info.Advanced = 0;
 info.Number_of_differential_eqs = -1;

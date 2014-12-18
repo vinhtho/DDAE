@@ -109,7 +109,7 @@ N = floor(diff(tspan)/h);
 x0 = options.InitVal;
 
 % predefining info's fields
-info.Solver = 'solve_noncausal_ddae';
+info.Solver = 'colddae_noncausal';
 info.Strangeness_index = 0;
 info.Shift_index = 0;
 info.Rejected_Steps = 0;
