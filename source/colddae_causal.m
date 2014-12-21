@@ -62,18 +62,15 @@ function [t,x,info] = colddae_causal(E,A,B,f,tau,phi,tspan,options)
 %-------------------------------------------------------------------------%
 if ~exist('options','var'),options = {}; end
 
-% number of iterations and step size (if both are set, step size has
-% priority!)
-if isfield(options,'Iter')
-    options.Step=diff(tspan)/options.Iter;
-else
-    options.Iter = 100;
-end
-if isfield(options,'Step')
-    options.Iter = diff(tspan)/options.Step;
-else
-    options.Step = diff(tspan)/options.Iter;
-end
+% bounds for the itererations in the main loop
+if ~isfield(options,'MaxIter')   options.MaxIter = 10000; end
+if ~isfield(options,'MaxReject') options.MaxReject = 100; end
+if ~isfield(options,'MaxCorrect')options.MaxCorrect = 10; end
+
+% initial step size and bounds for the step size
+if ~isfield(options,'InitStep')  options.InitStep = diff(tspan)/100; end
+if ~isfield(options,'MinStep')   options.MinStep = 0; end
+if ~isfield(options,'MaxStep')   options.MaxStep = inf; end
 
 % tolerances
 if ~isfield(options,'AbsTol')    options.AbsTol = 1e-5; end
@@ -97,11 +94,9 @@ if not(isa(E,'function_handle'))
     error('E must be a function handle.');
 end
 [m,n] = size(E(0));
-h = options.Step;
-N = options.Iter;
-tolR = options.RelTol;
+h = options.InitStep;
+N = options.MaxIter;
 x0 = options.InitVal;
-isConst = options.IsConst;
 
 % predefining info's fields
 info.Solver = 'colddae_causal';
@@ -109,6 +104,7 @@ info.Strangeness_index = -1;
 info.Advanced = 0;
 info.Number_of_differential_eqs = -1;
 info.Number_of_algebraic_eqs = -1;
+info.Rejected_steps = 0;
 info.Computation_time = -1;
 
 %-------------------------------------------------------------------------%
@@ -151,18 +147,10 @@ if options.MaxStrIdx<options.StrIdx
     error('MaxStrIdx must not be less than StrIdx.')
 end
 
-% the data for the RADAU IIA collocation, V is the inverse of A in the
-% Butcher tableau
-c=[(4-sqrt(6))/10; (4+sqrt(6))/10; 1];
-V=[ 3.224744871391589   1.167840084690405  -0.253197264742181
-    -3.567840084690405   0.775255128608412   1.053197264742181
-    5.531972647421811  -7.531972647421810   5.000000000000000 ];
-v0=-V*ones(3,1);
-
 % the container for the approximate solution of the DDAE and its stage values
-x=nan(3*n,N+1);
-x(1:n,1)=phi(t0+(c(1)-1)*h);
-x(n+1:2*n,1)=phi(t0+(c(2)-1)*h);
+x=nan(3*n,N);
+t = nan(1,N);
+t(1) = tspan(1);
 
 % find nearest consistent initial value to x0 by determining local
 % strangeness-free form at t=t0 and replace x0 by it
@@ -172,6 +160,9 @@ for k=1:l
 end
 BXTAUF = @(s) B(s)*evalAllHistFuncs(hist_funcs,s,tau(s),n,l)+f(s);
 [E1,A1,~,A2,g2,mu,Z1,Z2] = getRegularizedSystem(E,A,BXTAUF,t0,options);
+if options.IsConst
+    options.RegularSystem = {E1,A1,A2,mu,Z1,Z2};
+end
 info.Strangeness_index = mu;
 info.Number_of_differential_eqs = size(E1,1);
 info.Number_of_algebraic_eqs = size(A2,1);
@@ -179,8 +170,73 @@ info.Number_of_algebraic_eqs = size(A2,1);
 % compute nearest consistent initial vector to x0
 x(2*n+1:3*n,1)=x0-pinv(A2)*(A2*x0+g2);
 
-% the discretized time interval
-t=t0+h*(0:1:N);
+%-------------------------------------------------------------------------%
+% Time integration.
+%-------------------------------------------------------------------------%
+tic
+for i=1:N-1
+    
+    absErr = inf;
+    relErr = inf;
+    
+    for j=1:options.MaxReject
+        % Estimate the local error by performing a full step and two half
+        % steps.
+        [x_full,info] = timeStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h,options,m,n,info);
+        x_half = timeStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h/2,options,m,n,info);
+        x_half = timeStep(E,A,B,f,tau,phi,[t(1:i),t(i)+h/2],[x(:,1:i),x_half],h/2,options,m,n,info);
+        absErr = norm(x_half(2*n+1:3*n)-x_full(2*n+1:3*n));
+        relErr = absErr/norm(x_half(2*n+1:3*n));
+        % If the error fulfills the prescribed tolerances or the step size
+        % is already equal to the minimal step size, then the step is
+        % accepted. If not, the step is "rejected", the step size halved,
+        % and we repeat the procedure.
+        if (absErr<=options.AbsTol && relErr<=options.RelTol) || (h<=options.MinStep)
+            info.Rejected_steps = info.Rejected_steps + j-1;
+            break;
+        end
+        h = max(h/2,options.MinStep);
+    end
+    
+    % Use x_half for the approximation at t(i)+c(3)*h = t(i)+h.
+    x(:,i+1) = [x_full(1:2*n);x_half(2*n+1:3*n)];
+    t(i+1) = t(i) + h;
+    
+    % Estimate the next step size h.
+    h_newAbs = 0.9*h*(options.AbsTol/absErr)^(1/6);
+    h_newRel = 0.9*h*(options.RelTol/relErr)^(1/6);
+    h = min([h_newAbs,h_newRel,2*h]);
+    
+    % Impose lower and upper bounds on the step size h.
+    h = max(h,options.MinStep);
+    h = min([h,options.MaxStep,tspan(2)-t(i+1)]);
+    
+    if t(i+1)>=tspan(2)
+        break
+    end
+end
+% "cutting out" the approximate solution
+x=x(2*n+1:3*n,1:i+1);
+t=t(1:i+1);
+info.Computation_time = toc;
+
+%-------------------------------------------------------------------------%
+% Supporting functions.
+%-------------------------------------------------------------------------%
+
+function [x_next,info] = timeStep(E,A,B,f,tau,phi,t,x,h,options,m,n,info)
+
+% the data for the RADAU IIA collocation, V is the inverse of A in the
+% Butcher tableau
+c=[(4-sqrt(6))/10; (4+sqrt(6))/10; 1];
+V=[ 3.224744871391589   1.167840084690405  -0.253197264742181
+    -3.567840084690405   0.775255128608412   1.053197264742181
+    5.531972647421811  -7.531972647421810   5.000000000000000 ];
+v0=-V*ones(3,1);
+
+% other parameters
+l = numel(tau(t(1)));
+tolR = options.RelTol;
 
 % containers for the matrices of the local strangeness-free formulations at
 % t_ij = T(i)+h*c(j)
@@ -188,103 +244,102 @@ Etij=nan(n,n,3);
 Atij=nan(n,n,3);
 ftij=nan(n,1,3);
 
-%-------------------------------------------------------------------------%
-% Time integration.
-%-------------------------------------------------------------------------%
-tic
-for i=1:N
-    % For each collocation point...
-    for j=1:3
-        TAU = tau(t(i)+c(j)*h);
-        hist_funcs = cell(1,l);
-        for k = 1:l
-            % determine "x(t-tau)" by using the histpry function phi or by
-            % using interpolation
-            if t(i)+c(j)*h-TAU(k)<t0
-                hist_funcs{k} = phi;
-            else
-                % find the biggest time node smaller than t_i+c_j*h-tau
-                t_tau_index=find(t(i)+c(j)*h-TAU(k)<t(1:i),1)-1;
-                if isempty(t_tau_index)
-                    warning('ONE DELAY BECAME SMALLER THAN THE STEP SIZE. LONG STEPS NOT IMPLEMENTED YET IN solve_''causal_ddae.m''. TERMINATING SOLVING PROCESS.')
-                    t=t(1:i);
-                    x=x(2*n+1:3*n,1:i);
-                    info.Computation_time = toc;
-                    return;
-                end
-                t_tau=t(t_tau_index);
-                % if t_i+c_j*h-tau is not a node point, i.e. not in t, then we
-                % have to interpolate
-                % prepare some data for the interpolation
-                % we use a polynomial of degree 3, so we need 4 data points
-                x0_tau=x(2*n+1:3*n,t_tau_index);
-                X_tau=reshape(x(:,t_tau_index+1),n,3);
-                hist_funcs{k} = @(s) nevilleAitken(t_tau+[0;c]*h,[x0_tau,X_tau],s);
-            end
-        end
-        
-        BXTAUF = @(s) B(s)*evalAllHistFuncs(hist_funcs,s,tau(s),n,l)+f(s);
-        
-        % calculate locally regularized (i.e. strangeness-free) form at t =
-        % t(i)-c(j)*h
-        % we already have E1 and A1, if isConst is TRUE
-        if isConst
-            g = zeros((mu+1)*m,1);
-            for k = 0:mu
-                g(k*m+1:(k+1)*m) = matrixDifferential(BXTAUF,t(i)+c(j)*h,k,tolR,m,1);
-            end
-            g1 = Z1'*(BXTAUF(t(i)+c(j)*h));
-            if numel(Z2)>0
-                g2 = Z2'*g;
-            else
-                g2 = zeros(0,1);
-            end
+% For each collocation point...
+for j=1:3
+    TAU = tau(t(end)+c(j)*h);
+    hist_funcs = cell(1,l);
+    for k = 1:l
+        % determine "x(t-tau)" by using the histpry function phi or by
+        % using interpolation
+        if t(end)+c(j)*h-TAU(k)<t(1)
+            hist_funcs{k} = phi;
         else
-            [E1,A1,g1,A2,g2] = getRegularizedSystem(E,A,BXTAUF,t(i)+c(j)*h,options);
+            % find the biggest time node smaller than t_i+c_j*h-tau
+            t_tau_index=find(t(end)+c(j)*h-TAU(k)<t,1)-1;
+            if isempty(t_tau_index)
+                warning('ONE DELAY BECAME SMALLER THAN THE STEP SIZE. LONG STEPS NOT IMPLEMENTED YET IN solve_''causal_ddae.m''. TERMINATING SOLVING PROCESS.')
+                if TAU(k)<options.MinStep
+                    error('PLEASE DECREASE THE LOWER BOUND ON THE STEP SIZE.')
+                end
+                x_next=inf(3*n,1);
+                return
+            end
+            t_tau=t(t_tau_index);
+            % if t_i+c_j*h-tau is not a node point, i.e. not in t, then we
+            % have to interpolate
+            % prepare some data for the interpolation
+            % we use a polynomial of degree 3, so we need 4 data points
+            x0_tau=x(2*n+1:3*n,t_tau_index);
+            X_tau=reshape(x(:,t_tau_index+1),n,3);
+            h_tau = t(t_tau_index+1)-t(t_tau_index);
+            hist_funcs{k} = @(s) nevilleAitken(t_tau+[0;c]*h_tau,[x0_tau,X_tau],s);
         end
-        
-        % check if the derivatives of x(t-tau) vanish in the differential
-        % part, if not already known
-        if info.Advanced == false
-            P = inflateB(B,t(i)+c(j)*h,mu,tolR,m,l*n);
-            if numel(Z2)>0
-                B_2 = Z2'*P;
-                if mu>0
-                    if (max(max(abs(B_2(:,l*n+1:end))))>tolR*max(max(B_2),1))
-                        warning('ACCORDING TO THE CHOSEN TOLERANCE, THE SYSTEM IS VERY LIKELEY OF ADVANCED TYPE, USING THE METHOD OF STEPS MIGHT PRODUCE LARGE ERRORS.')
-                        info.Advanced = true;
-                    end
+    end
+
+    BXTAUF = @(s) B(s)*evalAllHistFuncs(hist_funcs,s,tau(s),n,l)+f(s);
+
+    % calculate locally regularized (i.e. strangeness-free) form at t =
+    % t(i)-c(j)*h
+    % we already have E1 and A1, if isConst is TRUE
+    if options.IsConst
+        E1 = options.RegularSystem{1};
+        A1 = options.RegularSystem{2};
+        A2 = options.RegularSystem{3};
+        mu = options.RegularSystem{4};
+        Z1 = options.RegularSystem{5};
+        Z2 = options.RegularSystem{6};
+        g = zeros((mu+1)*m,1);
+        for k = 0:mu
+            g(k*m+1:(k+1)*m) = matrixDifferential(BXTAUF,t(end)+c(j)*h,k,tolR,m,1);
+        end
+        g1 = Z1'*(BXTAUF(t(end)+c(j)*h));
+        if numel(Z2)>0
+            g2 = Z2'*g;
+        else
+            g2 = zeros(0,1);
+        end
+    else
+        [E1,A1,g1,A2,g2,mu,~,Z2] = getRegularizedSystem(E,A,BXTAUF,t(end)+c(j)*h,options);
+        if mu > info.Strangeness_index
+            info.Strangeness_index = mu;
+        end
+    end
+
+    % check if the derivatives of x(t-tau) vanish in the differential
+    % part, if not already known
+    if info.Advanced == false
+        P = inflateB(B,t(end)+c(j)*h,mu,tolR,m,l*n);
+        if numel(Z2)>0
+            B_2 = Z2'*P;
+            if mu>0
+                if (max(max(abs(B_2(:,l*n+1:end))))>tolR*max(max(B_2),1))
+                    warning('ACCORDING TO THE CHOSEN TOLERANCE, THE SYSTEM IS VERY LIKELEY OF ADVANCED TYPE, USING THE METHOD OF STEPS MIGHT PRODUCE LARGE ERRORS.')
+                    info.Advanced = true;
                 end
             end
         end
-        Etij(:,:,j)=[E1;zeros(size(A2))];
-        Atij(:,:,j)=[A1;A2];
-        ftij(:,j)=[g1;g2];
     end
-    
-    % Solve the linear system.
-    AA=zeros(3*n);
-    bb=zeros(3*n,1);
-    
-    for j=1:3
-        for k=1:3
-            AA((j-1)*n+1:j*n,(k-1)*n+1:k*n)=Etij(:,:,j)/h*V(j,k)-(j==k)*Atij(:,:,j);
-        end
-        bb((j-1)*n+1:j*n)=ftij(:,j)-Etij(:,:,j)/h*v0(j)*x(2*n+1:3*n,i);
-    end
-    
-    % The solution is a vector with length 3*n, it consists of the 3 values
-    % of the polynomial at the collocation points T(i)+c(j)*h, j=1..3
-    x(:,i+1)=AA\bb;
-    
+    Etij(:,:,j)=[E1;zeros(size(A2))];
+    Atij(:,:,j)=[A1;A2];
+    ftij(:,j)=[g1;g2];
 end
-% "cutting out" the approximate solution
-x=x(2*n+1:3*n,:);
-info.Computation_time = toc;
 
-%-------------------------------------------------------------------------%
-% Supporting functions.
-%-------------------------------------------------------------------------%
+% Solve the linear system.
+AA=zeros(3*n);
+bb=zeros(3*n,1);
+
+for j=1:3
+    for k=1:3
+        AA((j-1)*n+1:j*n,(k-1)*n+1:k*n)=Etij(:,:,j)/h*V(j,k)-(j==k)*Atij(:,:,j);
+    end
+    bb((j-1)*n+1:j*n)=ftij(:,j)-Etij(:,:,j)/h*v0(j)*x(2*n+1:3*n,end);
+end
+
+% The solution is a vector with length 3*n, it consists of the 3 values
+% of the polynomial at the collocation points T(i)+c(j)*h, j=1..3
+x_next=AA\bb;
+
+
 function XTAU = evalAllHistFuncs(hist_funcs,s,TAU,n,l)
 % Supporting function for evaluating the functions x(t-tau_i(t)) for i=1:l,
 % which are stored as dense output functions in the struct hist_funcs.
@@ -327,9 +382,16 @@ E0 = E(ti);
 %-------------------------------------------------------------------------%
 % Main loop: Increase mu until we get a regular system.
 %-------------------------------------------------------------------------%
+if isfield(options,'DArray')
+    NM_provided = feval(options.DArray,ti);
+end
 for mu = mu0:muMax
     % Build the derivative array.
-    NM = inflateEA(E,A,ti,mu,tolR);
+    if isfield(options,'DArray') && mu<=size(NM_provided,1)/m-1
+        NM = NM_provided(1:(mu+1)*m,1:(mu+2)*n);
+    else
+        NM = inflateEA(E,A,ti,mu,tolR);
+    end
     M = NM(:,(n+1):end);
     N = -NM(:,1:n);
     % Extract the algebraic equations.

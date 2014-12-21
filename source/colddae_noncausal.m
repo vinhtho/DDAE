@@ -5,14 +5,14 @@ function [t,x,info] = colddae_noncausal(E,A,B,f,tau,phi,tspan,options)
 %             x(t) = phi(t),                            for t<=t0
 % with smooth delay tau(t)>=0 and history function phi.
 %
-% Noncausal means that the so called shift index can be bigger than zero,
-% but we only allow it to be at most three (due to hard coding).
+% Noncausal means that the so called shift index can be bigger than zero.
 %
 % The corresponding DAE Ex = Ax can have strangeness index bigger than
 % zero (differentiation index bigger than one). However, note that bigger
 % errors might occur if the strangeness index is too big, because
 % derivatives are approximated by finite differences. We suppose that the
-% strangeness index is not bigger than three.
+% strangeness index is not bigger than three (due to hard coding unless the
+% all derivative arrays are provided).
 %
 % The time stepping is based on the method of steps and using Radau IIA 
 % collocation.
@@ -112,9 +112,9 @@ x0 = options.InitVal;
 info.Solver = 'colddae_noncausal';
 info.Strangeness_index = 0;
 info.Shift_index = 0;
-info.Rejected_Steps = 0;
 info.Number_of_differential_eqs = -1;
 info.Number_of_algebraic_eqs = -1;
+info.Rejected_steps = 0;
 info.Computation_time = -1;
 
 %-------------------------------------------------------------------------%
@@ -178,7 +178,7 @@ t(1)=tspan(1);
 %-------------------------------------------------------------------------%
 % finding consistent initial value
 %-------------------------------------------------------------------------%
-[E1,~,~,~,A2,B2,f2,mu,K] = getRegularizedSystem(E,A,B,f,tau,t0,options);
+[E1,~,~,~,A2,B2,f2,mu,K] = getRegularizedSystem(E,A,B,f,tau,t0,options,m,n);
 x(2*n+1:3*n,1)=x0-pinv(A2)*(A2*x0+B2*phi(t0-tau(t0))+f2);
 info.Strangeness_index = mu;
 info.Shift_index = K;
@@ -198,9 +198,9 @@ for i=1:options.MaxIter
     for j=1:options.MaxReject
         % Estimate the local error by performing a full step and two half
         % steps.
-        x_full = timeStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h,options);
-        x_half = timeStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h/2,options);
-        x_half = timeStep(E,A,B,f,tau,phi,[t(1:i),t(i)+h/2],[x(:,1:i),x_half],h/2,options);
+        x_full = timeStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h,options,m,n);
+        x_half = timeStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h/2,options,m,n);
+        x_half = timeStep(E,A,B,f,tau,phi,[t(1:i),t(i)+h/2],[x(:,1:i),x_half],h/2,options,m,n);
         absErr = norm(x_half(2*n+1:3*n)-x_full(2*n+1:3*n));
         relErr = absErr/norm(x_half(2*n+1:3*n));
         % If the error fulfills the prescribed tolerances or the step size
@@ -208,7 +208,7 @@ for i=1:options.MaxIter
         % accepted. If not, the step is "rejected", the step size halved,
         % and we repeat the procedure.
         if (absErr<=options.AbsTol && relErr<=options.RelTol) || (h<=options.MinStep)
-            info.Rejected_Steps = info.Rejected_Steps + j-1;
+            info.Rejected_steps = info.Rejected_steps + j-1;
             break;
         end
         h = max(h/2,options.MinStep);
@@ -240,14 +240,14 @@ info.Computation_time = toc;
 %-------------------------------------------------------------------------%
 % Supporting functions.
 %-------------------------------------------------------------------------%
-function x_next = timeStep(E,A,B,f,tau,phi,t,x,h,options)
+function x_next = timeStep(E,A,B,f,tau,phi,t,x,h,options,m,n)
 % Performs EITHER a usual step of the method of steps with index reduction 
 % OR a long step, i.e. h>tau and x(t-tau) has to be predicted using
 % extrapolation of the last computed cubic polynomial, with index
 % reduction. After extrapolating and computing the current cubic
 % polynomial, we will eventually get a new x(t-tau(t)) that differs from
 % the 
-[m,n] = size(E(0));
+
 % The vector c comes from the Butcher tableau of the 3-stage Radar IIa
 % method.
 c=[(4-sqrt(6))/10; (4+sqrt(6))/10; 1];
@@ -275,7 +275,7 @@ for i=1:options.MaxCorrect
                 % just interpret x(t-tau) as x(t).
                 xtau(:,j) = zeros(n,1);
                 % Calculate locally regularized form at t = t(i)-c(j)*h.
-                [E1,A1,~,f1,A2,~,f2] = getRegularizedSystem(E,@(t)A(t)+B(t),@(t)zeros(m,n),f,tau,t(end)+c(j)*h,options);
+                [E1,A1,~,f1,A2,~,f2] = getRegularizedSystem(E,@(t)A(t)+B(t),@(t)zeros(m,n),f,tau,t(end)+c(j)*h,options,m,n);
                 Etij(:,:,j)=[E1;zeros(size(A2))];
                 Atij(:,:,j)=[A1;A2];
                 Btij(:,:,j)=zeros(n,n);
@@ -314,7 +314,7 @@ for i=1:options.MaxCorrect
                     xtau(:,j) = nevilleAitken(t(end-1)+[0;c]*h_tau,[x0_tau,X_tau],t_tau);
                 end
                 % Calculate locally regularized form at t = t(i)-c(j)*h.
-                [E1,A1,B1,f1,A2,B2,f2] = getRegularizedSystem(E,A,B,f,tau,t(end)+c(j)*h,options);
+                [E1,A1,B1,f1,A2,B2,f2] = getRegularizedSystem(E,A,B,f,tau,t(end)+c(j)*h,options,m,n);
                 Etij(:,:,j)=[E1;zeros(size(A2))];
                 Atij(:,:,j)=[A1;A2];
                 Btij(:,:,j)=[B1;B2];
@@ -388,9 +388,9 @@ for i=1:n-1
     end
 end
 px=px(:,1);
-function [E_1,A_1,B_1,f_1,A_2,B_2,f_2,mu,K] = getRegularizedSystem(E,A,B,f,tau,ti,options)
+
+function [E_1,A_1,B_1,f_1,A_2,B_2,f_2,mu,K] = getRegularizedSystem(E,A,B,f,tau,ti,options,m,n)
 %TODO more comments
-tolA=options.AbsTol;
 KMax=options.MaxShift;
 muMax=options.MaxStrIdx;
 tolR=options.RelTol;
@@ -400,7 +400,7 @@ mu0=options.StrIdx;
 % tolerance for the matrix differential
 tol= tolR;
 E0 = E(ti);
-[m,n]=size(E0);
+% [m,n]=size(E0);
 muMax = max(mu0,muMax);
 %
 % container for the derivative arrays of the original and timeshifted
@@ -417,15 +417,31 @@ t_shifted(1) = ti;
 for i = 1:KMax
     t_shifted(i+1) = fsolve(@(t1) t1-tau(t1)-t_shifted(i),t_shifted(i)+tau(t_shifted(i)),optimset('Display','off'));
 end
+
 for K = 0:KMax
     % logical indices for selecting certain rows and columns in NMP
     idx1 = false((muMax+1)*m*(KMax+1),1);
     idx2 = false((muMax+2)*n*(KMax+1),1);
     
+    % User provided derivative array.
+    if isfield(options,'DArray')
+        inflateEA_provided = feval(options.DArray{1},t_shifted(K+1));
+        inflateB_provided = feval(options.DArray{2},t_shifted(K+1));
+        mu_provided = size(inflateEA_provided,1)/m-1;
+    end
+        
     for mu = 0:muMax
-        NMP((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+2)*n)+K*(muMax+2)*n) = inflateEA(E,A,t_shifted(K+1),mu,tolR);
+        if isfield(options,'DArray') && mu<=mu_provided
+            NMP((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+2)*n)+K*(muMax+2)*n) = inflateEA_provided((1:(mu+1)*m),(1:(mu+2)*n));
+        else
+            NMP((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+2)*n)+K*(muMax+2)*n) = inflateEA(E,A,t_shifted(K+1),mu,tolR);
+        end
         if K>0
-            NMP((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+1)*n)+(K-1)*(muMax+2)*n) = -inflateB(B,t_shifted(K+1),tau,mu,tolR,m,n);
+            if isfield(options,'DArray') && mu<=mu_provided
+                NMP((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+1)*n)+(K-1)*(muMax+2)*n) = -inflateB_provided(1:(mu+1)*m,1:(mu+1)*n);
+            else
+                NMP((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+1)*n)+(K-1)*(muMax+2)*n) = -inflateB(B,t_shifted(K+1),tau,mu,tolR,m,n);
+            end
             if K<K0
                 continue;
             end
@@ -448,7 +464,11 @@ for K = 0:KMax
         U1 = null2(NMP(idx1,idx2)',tolR);
         M = U1'*NMP(idx1,idx2M);
         N = -U1'*NMP(idx1,idx2N);
-        P = U1(1:(mu+1)*m,:)'*inflateB(B,ti,tau,mu,tolR,m,n);
+        if isfield(options,'DArray') && mu<=mu_provided
+            P = U1(1:(mu+1)*m,:)'*inflateB_provided(1:(mu+1)*m,1:(mu+1)*n);
+        else
+            P = U1(1:(mu+1)*m,:)'*inflateB(B,ti,tau,mu,tolR,m,n);
+        end
         %
         % TODO SOME COMMENTS
         Z2 = null2([M,P(:,n+1:(mu+1)*n)]',tolR);
@@ -500,7 +520,15 @@ for K = 0:KMax
         
         % extract the algebraic and differential parts for f and the
         % differential parts for E, A and B
-        g = U1'*inflatef(f,t_shifted,K,mu,tol,m);
+        g = nan((mu+1)*m*(K+1),1);
+        for j = 0:K
+            if isfield(options,'DArray') && mu<=mu_provided
+                g(j*(mu+1)*m+1:(j+1)*(mu+1)*m) = feval(options.DArray{3},t_shifted(j+1));
+            else
+                g(j*(mu+1)*m+1:(j+1)*(mu+1)*m) = inflatef(f,t_shifted(j+1),mu,tol,m);
+            end
+        end
+        g = U1'*g;
         f_2 = Z2'*g;
         A_1 = Z1'*N;
         f_1 = Z1'*g;
@@ -601,7 +629,25 @@ switch mu
             B3,3*B2*(1-tau1)-3*B1*tau2-B0*tau3,3*B1*(1-tau1)^2-3*B0*(1-tau1)*tau2,B0*(1-tau1)^3
             ];
 end
-function g  = inflatef(f,t_shifted,K,mu,tol,m)
+function g  = inflatef(f,tK,mu,tol,m)
+% Builds the vector
+%    _        _ 
+%   |          |
+%   |   f (tK) |
+%   |   .      |
+%   |   f (tK) |
+%   |   .      |
+%   |   .      |
+%   |   .      |
+%   |    (mu)  |
+%   |   f (tK) |
+%   |_        _|.
+
+g = zeros((mu+1)*m,1);
+    for i = 1:(mu+1)
+        g(((i-1)*m+1:i*m)) = matrixDifferential(f,tK,i-1,tol,m,1);
+    end
+function g  = inflateAndShiftf(f,t_shifted,K,mu,tol,m)
 % Builds the vector
 %    _                  _
 %   |                    |
