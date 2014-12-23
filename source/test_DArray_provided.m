@@ -19,13 +19,14 @@ phi = @(t)[sin(t);cos(t)];
 dphi = @(t)[cos(t);-sin(t)];
 ddphi = @(t)-phi(t);
 
-tau=@(t) exp(-t);
-dtau=@(t) -exp(-t);
+tau=@(t) 1%exp(-t);
+dtau=@(t) 0%-exp(-t);
 
 f=@(t)E0*dphi(t)-A0*phi(t)-B0*phi(t-tau(t));
 df = @(t) E0*ddphi(t)-A0*dphi(t)-B0*dphi(t-tau(t))*(1-dtau(t));
 
 % options with derivative array M*z = P*z(t-tau(t))+g.
+options1.DArray={};
 options1.DArray{1}=@(t)[
      -A0,E0,zeros(2)
      zeros(2),-A0,E0];

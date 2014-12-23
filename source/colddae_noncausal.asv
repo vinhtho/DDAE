@@ -53,12 +53,15 @@ function [t,x,info] = colddae_noncausal(E,A,B,f,tau,phi,tspan,options)
 %               regularized system is computed only once, i.e. the
 %               solver needs less computation time), default: false.
 %   
-%   DArray      A struct containing M, P, and g as function handles in the
-%               first, second and third entry, resp, which enables the user
-%               to pass the exact derivative array of the DDAE, which is of
-%               the form M(t)*z(t)=P(t)*z(t-tau(t))+g(t), whith
-%               z=[x;\dot{x};\ddot{x};...;x^{(mu+1)}], default: not set.
+%   DArray      The user can pass the exact derivative array of the DDAE,
+%               which if of the form M(t)*z(t)=P(t)*z(t-tau(t))+g(t), whith
+%               z=[x;\dot{x};\ddot{x};...;x^{(mu+1)}].
+%               DArray is a struct containing M, P, and g as function
+%               handles in the first, second and third entry, resp.
+%               If not enough derivatives are provided, then finite
+%               differences are used
 %               
+%
 % @supporting functions:
 %   timeStep
 %   getRegularizedSystem

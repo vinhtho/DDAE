@@ -1,4 +1,4 @@
-function [t,x,info] = colddae_noncausal(E,A,B,f,tau,phi,tspan,options)
+function [t,x,info] = colddae_noncausal_2(E,A,B,f,tau,phi,tspan,options)
 %COLDDAE_NONCAUSAL numerical solver for non-causal linear delay
 % differential-algebraic equations of the form
 %   E(t)\dot{x}(t) = A(t)x(t) + B(t)x(t-tau(t)) + f(t)  for t\in(t0,tf]
@@ -512,7 +512,9 @@ for K = 0:KMax
         idx2((2*n+1):(mu+2)*n) = true;
         %
         % extract a system without x(t+tau), x(t+2*tau), ..., x(t+K*tau) and its derivatives
-        U = null2(DISYS(idx1,idx2)',tolR);
+        U1 = null2(DISYS(idx1,idx2)',tolR);
+        U2 = orth2(U1'*DISYS(idx1,or(idx2N,idx2M)),tolR);
+        U=U1*U2;
         M = U'*DISYS(idx1,idx2M);
         N = -U'*DISYS(idx1,idx2N);
         if isfield(options,'DArray') && mu<=mu_provided
@@ -522,42 +524,41 @@ for K = 0:KMax
         end
         %
         % TODO SOME COMMENTS
-        Z2 = null2([M,P(:,n+1:(mu+1)*n)]',tolR);
-        Z1 = orth2(M,tolR);
+        Z2 = null2(M',tolR);
+        
         %
         % extract the coefficients of the algebraic variables
         A_2 = Z2'*N;
         T2 = null2(A_2,tolR);
+        
+        Z1 = orth2(M*T2,tolR);
+        E_1 = Z1'*M;
+        
         % check if the number of (linearly independent) algebraic equations
         % a and differential equations d is equal to the number of
         % variables n, if not then continue by increasing mu or K
         a = rank(A_2,tolR);
-        if norm(isnan(Z1'*M*T2)+isinf(Z1'*M*T2),1)>0
-            Z1(isnan(Z1))=0;
-        end
-        d = rank(Z1'*M*T2,tolR);
+        d = rank(E_1,tolR);
         if a+d~=n
             continue
         end
-        % remove redundant algebraic equations
-        if size(A_2,1)>0
-            Y2 = orth2(A_2,tolR);
-            A_2 = Y2'*A_2;
-            % update the selector Z2
-            Z2 = Z2*Y2;
+%         % remove redundant algebraic equations
+%         if size(A_2,1)>0
+%             Y2 = orth2(A_2,tolR);
+%             A_2 = Y2'*A_2;
+%             % update the selector Z2
+%             Z2 = Z2*Y2;
+%         end
+
+        % check for advanceness, i.e. wether the solution depends on
+        % derivatives of x(t-tau)
+        B_2 = Z2'*P;
+        if mu>0 && a>0
+            if max(max(abs(B_2(:,n+1:end))))>tolR*max(max(B_2),1)
+                error('ACCORDING TO THE CHOSEN TOLERANCE, THE SYSTEM IS OF ADVANCED TYPE, USING THE METHOD OF STEPS MIGHT PRODUCE LARGE ERRORS.')
+            end
         end
-        B_2 = Z2'*P(:,1:n);
-        
-        % extract the coefficients of the differential variables
-        E_1 = Z1'*M;
-        % remove redundant equations
-        Y1 = orth2(E_1*T2,tolR);
-        E_1 = Y1'*E_1;
-        % update the selector Z2
-        Z1 = Z1*Y1;
-        
-        % check if the derivatives of x(t-tau) vanish in the differential
-        % part
+        B_2 = B_2(:,1:n);
         B_1 = Z1'*P;
         if mu>0 && d>0
             if max(max(abs(B_1(:,n+1:end))))>tolR*max(max(B_1),1)
