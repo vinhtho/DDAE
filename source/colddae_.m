@@ -1,32 +1,32 @@
 function [t,x,info] = colddae_(E,A,B,f,tau,phi,tspan,options)
-%COLDDAE_ numerical solver for either non-causal linear delay
-% differential-algebraic equations of the form
-%   E(t)\dot{x}(t) = A(t)x(t) + B(t)x(t-tau(t)) + f(t)  for t\in(t0,tf]
-%             x(t) = phi(t),                            for t<=t0
-% with smooth delay tau(t)>=0 and history function phi
-% OR
-% causal linear delay differential-algebraic equations of the form
-%   E(t)\dot{x}(t) = A(t)x(t) + \sum B_k(t)x(t-tau_k(t)) + f(t)     for t\in(t0,tf]
-%             x(t) = phi(t),                                        for t<=t0
-% with smooth delays tau_k(t)>=0, k=1:l, and history function phi.
-%
-% Noncausal means that the so called shift index can be bigger than zero,
-% but we only allow it to be at most three (due to hard coding).
+%COLDDAE_ numerical solver for either
+% causal causal linear delay differential-algebraic equations of the form
+%   E(t)\dot{x}(t) = A(t)x(t) + \sum_{i=1}^k B_i(t)x(t-\tau_i(t)) + f(t)  for t\in(t0,tf]
+%             x(t) = \phi(t),                                             for t<=t0,
+% or non-causal linear delay differential-algebraic equations of the form
+%   E(t)\dot{x}(t) = A(t)x(t) + B(t)x(t-\tau(t)) + f(t)  for t\in(t0,tf]
+%             x(t) = \phi(t),                            for t<=t0
+% with E,A,B,B_i,f,\tau,\tau_i,\phi sufficiently smooth.
 %
 % The corresponding DAE Ex = Ax can have strangeness index bigger than
 % zero (differentiation index bigger than one). However, note that bigger
-% errors might occur if the strangeness index is too big, because
+% errors might occur if the strangeness index is too big and
 % derivatives are approximated by finite differences. We suppose that the
-% strangeness index is not bigger than three.
+% strangeness index is not bigger than three (due to hard coding unless the
+% the derivative array is provided).
 %
 % The time stepping is based on the method of steps and using Radau IIA 
-% collocation.
+% collocation. The step size is chosen in each step to make the local error
+% satisfy the given relative and absolute tolerances. Also, we allow
+% so-called "long steps", i.e., the step size is allowed to become bigger
+% than the delay. 
 %
 % @parameters:
-%   E,A,B       Coefficients of the DDAE, m-by-n matrix functions
-%               (B is m-by-l*n in the multiple delays case)
+%   E,A         Coefficients of the DDAE, m-by-n matrix functions.
+%   B           Coefficients of the DDAE, m-by-k*n matrix functions, where
+%               k is the number of delays
 %   f           m-by-1 vector function.
-%   tau         Variable lag function.
+%   tau         Variable delay or lag,  1-by-k vector function.
 %   phi         n-by-1 history function.
 %   tspan       Considered time interval [t0,tf].
 %   options     Struct for optional parameters, set by
@@ -45,7 +45,6 @@ function [t,x,info] = colddae_(E,A,B,f,tau,phi,tspan,options)
 %
 %   AbsTol      Absolute tolerance, default: 1e-5.
 %   RelTol      Relative tolerance, default: 1e-5.
-%   LagTol      Set x(t-tau(t)):=x(t) for tau(t)<=LagTol, default: 1e-5.
 %
 %   StrIdx      Lower bound for the strangeness index, default: 0.
 %   MaxStrIdx   Upper bound for the strangeness index, default: 3
@@ -55,14 +54,27 @@ function [t,x,info] = colddae_(E,A,B,f,tau,phi,tspan,options)
 %   InitVal     Initial value, not necessarily consistent, default: 
 %               phi(tspan(1)).
 %
+%   IsConst     A boolean, true if E,A,B,tau are constant (then the
+%               regularized system is computed only once, i.e. the
+%               solver needs less computation time), default: false.
+%   
+%   DArray      A struct containing M, P, and g as function handles in the
+%               first, second and third entry, resp, which enables the user
+%               to pass the exact derivative array of the DDAE, which is of
+%               the form M(t)*z(t)=P(t)*z(t-tau(t))+g(t), whith
+%               z=[x;\dot{x};\ddot{x};...;x^{(mu+1)}], default: not set.
+%               
 % @supporting functions:
 %   timeStep
+%   solveLinSystem
+%   nevilleAitken
 %   getRegularizedSystem
 %   inflateEA
 %   inflateB
-%   inflatef
-%   solveLinSystem
-%   nevilleAitken
+%   inflateAndShiftf
+%   matrixDifferential
+%   null2
+%   orth2
 %
 % @return values:
 %   t           t(i+1) = t0+h_i with h_i the i-th step size.
@@ -102,20 +114,50 @@ if ~isfield(options,'MaxShift')  options.MaxShift = 3; end
 % initial value (not necessarily consistent)
 if ~isfield(options,'InitVal')   options.InitVal = phi(tspan(1)); end
 
+% Are E, A, B, and tau constant functions?
+if ~isfield(options,'IsConst')   options.IsConst = false; end
+
 %-------------------------------------------------------------------------%
-% checking the input data and defining some parameters
+% defining some parameters
 %-------------------------------------------------------------------------%
-% checking E 
+t0 = tspan(1);
 if not(isa(E,'function_handle'))
     error('E must be a function handle.'); 
 end
 [m,n] = size(E(0));
+h = options.InitStep;
+N = floor(diff(tspan)/h);
+x0 = options.InitVal;
+
+% predefining info's fields
+info.Strangeness_index = -1;
+info.Shift_index = -1;
+info.Number_of_differential_eqs = -1;
+info.Number_of_algebraic_eqs = -1;
+info.Rejected_steps = 0;
+info.Computation_time = -1;
+
+%-------------------------------------------------------------------------%
+% some more input checks
+%-------------------------------------------------------------------------%
+% checking tau
+if not(isa(tau,'function_handle'))
+    error('Delay tau must be a function handle.');
+end
+k = numel(tau(tspan(1)));
 % checking A
 if not(isa(A,'function_handle'))
     error('A must be a function handle.'); 
 end
 if or(size(A(0),1)~=m,size(A(0),2)~=n)
     error('A has wrong size.')
+end
+% checking B
+if not(isa(B,'function_handle'))
+    error('B must be a function handle.'); 
+end
+if or(size(B(0),1)~=m,size(B(0),2)~=k*n)
+    error('B has wrong size.')
 end
 % checking f
 if not(isa(f,'function_handle'))
@@ -124,27 +166,10 @@ end
 if or(size(f(0),1)~=m,size(f(0),2)~=1)
     error('f has wrong size.')
 end
-% checking tau
-if not(isa(tau,'function_handle'))
-    error('Delay tau must be a function handle.'); 
-end
-l = numel(tau(tspan(1)));
-% checking B
-if not(isa(B,'function_handle'))
-    error('B must be a function handle.'); 
-end
-if or(size(B(0),1)~=m,size(B(0),2)~=l*n)
-    error('B has wrong size.')
-end
 % checking phi
 if or(size(phi(0),1)~=n,size(phi(0),2)~=1)
     error('phi has wrong size.')
 end
-% checking tspan
-if numel(tspan)~=2
-    error('tspan must be a vector of length 2.')
-end
-t0 = tspan(1);
 % checking the options
 if options.MaxShift<options.Shift
     error('MaxShift must not be less than Shift.')
@@ -152,19 +177,7 @@ end
 if options.MaxStrIdx<options.StrIdx
     error('MaxStrIdx must not be less than StrIdx.')
 end
-if norm(size(options.InitVal)-[n,1])>0
-    error('The initial value has wrong size.')
-end
-h = options.InitStep;
 
-% predefining info's fields
-info.Solver = 'colddae_';
-info.Strangeness_index = 0;
-info.Shift_index = 0;
-info.Rejected_Steps = 0;
-info.Number_of_differential_eqs = -1;
-info.Number_of_algebraic_eqs = -1;
-info.Computation_time = -1;
 
 %-------------------------------------------------------------------------%
 % preparation for the main loop
@@ -177,21 +190,25 @@ c=[(4-sqrt(6))/10; (4+sqrt(6))/10; 1];
 % DDAE's solution at the time points t(j-1)+c(1)*h, t(j-1)+c(2)*h and t(j)
 % in the first n, second n and third n entries, respectively, where h
 % denotes the (current) step size.
-x=nan(3*n,options.MaxIter+1);
+x=nan(3*n,N+1);
 x(1:n,1)=phi(t0+(c(1)-1)*h);
 x(n+1:2*n,1)=phi(t0+(c(2)-1)*h);
-t=nan(1,options.MaxIter+1);
+t=nan(1,N+1);
 t(1)=tspan(1);
 
 %-------------------------------------------------------------------------%
 % finding consistent initial value
 %-------------------------------------------------------------------------%
-[E1,~,~,~,A2,B2,f2,mu,K] = getRegularizedSystem(E,A,B,f,tau,t0,options);
-x0 = options.InitVal;
-tau0 = tau(t0);
-xtau0 = nan(l*n,1);
-for k=1:l
-    xtau0((k-1)*n+1:k*n) = phi(t0-tau0(k));
+[E1,A1,B1,~,A2,B2,f2,mu,K,U,Z1,Z2] = getRegularizedSystem(E,A,B,f,tau,t0,options,m,n);
+% store the just computed regularized system if E,A,B,tau are constant
+if options.IsConst
+    options.RegSystem = {E1,A1,B1,A2,B2,mu,K,U,Z1,Z2};
+end
+% Compute a consistent initial value.
+xtau0 = nan(k*n,1);
+tau0 = tau(0);
+for l=1:k
+    xtau0((l-1)*n+1:l*n)=phi(t0-tau0(l));
 end
 x(2*n+1:3*n,1)=x0-pinv(A2)*(A2*x0+B2*xtau0+f2);
 info.Strangeness_index = mu;
@@ -212,9 +229,9 @@ for i=1:options.MaxIter
     for j=1:options.MaxReject
         % Estimate the local error by performing a full step and two half
         % steps.
-        x_full = timeStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h,options);
-        x_half = timeStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h/2,options);
-        x_half = timeStep(E,A,B,f,tau,phi,[t(1:i),t(i)+h/2],[x(:,1:i),x_half],h/2,options);
+        [x_full,info] = timeStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h,options,m,n,info);
+        x_half = timeStep(E,A,B,f,tau,phi,t(1:i),x(:,1:i),h/2,options,m,n,info);
+        x_half = timeStep(E,A,B,f,tau,phi,[t(1:i),t(i)+h/2],[x(:,1:i),x_half],h/2,options,m,n,info);
         absErr = norm(x_half(2*n+1:3*n)-x_full(2*n+1:3*n));
         relErr = absErr/norm(x_half(2*n+1:3*n));
         % If the error fulfills the prescribed tolerances or the step size
@@ -222,7 +239,7 @@ for i=1:options.MaxIter
         % accepted. If not, the step is "rejected", the step size halved,
         % and we repeat the procedure.
         if (absErr<=options.AbsTol && relErr<=options.RelTol) || (h<=options.MinStep)
-            info.Rejected_Steps = info.Rejected_Steps + (j-1);
+            info.Rejected_steps = info.Rejected_steps + j-1;
             break;
         end
         h = max(h/2,options.MinStep);
@@ -254,14 +271,14 @@ info.Computation_time = toc;
 %-------------------------------------------------------------------------%
 % Supporting functions.
 %-------------------------------------------------------------------------%
-function x_next = timeStep(E,A,B,f,tau,phi,t,x,h,options)
+function [x_next,info] = timeStep(E,A,B,f,tau,phi,t,x,h,options,m,n,info)
 % Performs EITHER a usual step of the method of steps with index reduction 
 % OR a long step, i.e. h>tau and x(t-tau) has to be predicted using
 % extrapolation of the last computed cubic polynomial, with index
 % reduction. After extrapolating and computing the current cubic
 % polynomial, we will eventually get a new x(t-tau(t)) that differs from
 % the 
-[m,n] = size(E(0));
+
 % The vector c comes from the Butcher tableau of the 3-stage Radar IIa
 % method.
 c=[(4-sqrt(6))/10; (4+sqrt(6))/10; 1];
@@ -269,95 +286,115 @@ c=[(4-sqrt(6))/10; (4+sqrt(6))/10; 1];
 % t_ij = T(i)+h*c(j).
 Etij=nan(n,n,3);
 Atij=nan(n,n,3);
+k = numel(tau(t(1)));
+Btij=nan(n,k*n,3);
 ftij=nan(n,3);
-gtij=nan(n,3);
-l=numel(tau(0)); % The number of delays.
-Btij=nan(n,l*n,3);
-xtau=nan(l*n,3);
+btij=nan(n,3);
+xtau=nan(k*n,3);
 
 % A matrix of booleans used for logical indexing, used in order to
 % adress only those entries which have been computed by long steps.
-isLongStep = false(l*n,3);
+isLongStep = false(k*n,3);
 
-% The FOR-loop with i as running parameter is only used for long steps, 
-% i.e. if x(t-tau) has to be extrapolated. During the loop, x(t-tau) will 
-% be corrected.
+% The FOR-loop is only used for long steps, i.e. if x(t-tau) has to be
+% extrapolated. During the loop, x(t-tau) will be corrected.
 for i=1:options.MaxCorrect
     if i==1
         % For each collocation point...
         for j=1:3
             
-            % Calculate locally regularized form at t = t(i)+c(j)*h.
-            [E1,A1,B1,f1,A2,B2,f2] = getRegularizedSystem(E,A,B,f,tau,t(end)+c(j)*h,options);
+            % Calculate locally regularized form at t = t(i)-c(j)*h.
+            if options.IsConst
+                E1 = options.RegSystem{1};
+                A1 = options.RegSystem{2};
+                B1 = options.RegSystem{3};
+                A2 = options.RegSystem{4};
+                B2 = options.RegSystem{5};
+                mu = options.RegSystem{6};
+                K = options.RegSystem{7};
+                U = options.RegSystem{8};
+                Z1 = options.RegSystem{9};
+                Z2 = options.RegSystem{10};
+                tau_const = tau(t(1));
+                if isfield(options,'DArray')
+                    g = nan((mu+1)*(K+1)*m,1);
+                    for p = 0:K
+                        g_provided = feval(options.DArray{3},t(end)+c(j)*h+p*tau_const);
+                        if length(g_provided)<mu
+                            warning('PLEASE PROVIDE MORE DERIVATIVES OR USE NO DERIVATIVE ARRAYS.')
+                            g = inflateAndShiftf(f,t(end)+c(j)*h+(0:K)*tau_const,K,mu,options.RelTol,m);
+                            break;
+                        end
+                        g((1:(mu+1)*m)+p*(mu+1)*m) = g_provided(1:(mu+1)*m);
+                    end
+                else
+                    g = inflateAndShiftf(f,t(end)+c(j)*h+(0:K)*tau_const,K,mu,options.RelTol,m);
+                end
+                f1 = Z1'*U'*g;
+                f2 = Z2'*U'*g;
+            else
+                [E1,A1,B1,f1,A2,B2,f2,mu,K] = getRegularizedSystem(E,A,B,f,tau,t(end)+c(j)*h,options,m,n);
+                if mu<info.Strangeness_index,info.Strangeness_index=mu;end
+                if K<info.Shift_index,info.Strangeness_index=K;end
+            end
             Etij(:,:,j)=[E1;zeros(size(A2))];
             Atij(:,:,j)=[A1;A2];
             Btij(:,:,j)=[B1;B2];
             ftij(:,j)=[f1;f2];
             
-            % Compute x(t-tau_k(t)) for k=1:l.
+            % Now compute x(t-tau_1),...x(t-tau_k).
             tau_j = tau(t(end)+c(j)*h);
-            % For each delay...
-            for k=1:l
-                if tau_j(k)<0
-                    error('THE DELAY tau IN x(t-tau) IS NEGATIVE!');
-%                 elseif tau_j(k)<=options.LagTol;
-%                     % If the delay is vanishing or becoming to small, then we
-%                     % just interpret x(t-tau) as x(t).
-%                     xtau((k-1)*n+1:k*n,j) = zeros(n,1);
-%                     % Calculate locally regularized form at t = t(i)-c(j)*h.
-%                     [E1,A1,~,f1,A2,~,f2] = getRegularizedSystem(E,@(t)A(t)+B(t),@(t)zeros(m,n),f,tau,t(end)+c(j)*h,options);
-%                     Etij(:,:,j)=[E1;zeros(size(A2))];
-%                     Atij(:,:,j)=[A1;A2];
-%                     Btij(:,:,j)=zeros(n,n);
-%                     ftij(:,j)=[f1;f2];
+            % For every delay...
+            for l = 1:k
+                if tau_j(l)<=0
+                    error('THE DELAY IS NOT POSITIVE!');
                 else
-                    % The delay is big enough and we determine x(t-tau_k).
-                    t_tau = t(end)+c(j)*h-tau_j(k);
+                    % Determine x(t-tau).
+                    t_tau = t(end)+c(j)*h-tau_j(l);
                     if t_tau<t(1)
-                        % t-tau_k(t) is less than t0, so we use the history function.
-                        xtau((k-1)*n+1:k*n,j) = phi(t_tau);
+                        % t-tau(t) is less than t0, so we use the history function.
+                        xtau((l-1)*n+1:l*n,j) = phi(t_tau);
                     elseif t_tau*(1+eps)<t(end)
-                        % t-tau_k(t) is in the interval [t(1),t(end)]
-                        % find the biggest time node smaller than
-                        % t_i+c_j*h-tau_k
+                        % t-tau(t) is in the interval [t(1),t(end)]
+                        % find the biggest time node smaller than t_i+c_j*h-tau
                         L = find(t_tau<t,1)-1;
-                        % If t_i+c_j*h-tau_k is not a node point, i.e. not in t, then
+                        % If t_i+c_j*h-tau is not a node point, i.e. not in t, then
                         % we have to interpolate. We use a polynomial of degree 3, 
                         % so we need 4 data points.
                         x0_tau=x(2*n+1:3*n,L);
                         X_tau=reshape(x(:,L+1),n,3);
                         h_tau = t(L+1)-t(L);
                         % Interpolate with Neville-Aitken.
-                        xtau((k-1)*n+1:k*n,j) = nevilleAitken(t(L)+[0;c]*h_tau,[x0_tau,X_tau],t_tau);
+                        xtau((l-1)*n+1:l*n,j) = nevilleAitken(t(L)+[0;c]*h_tau,[x0_tau,X_tau],t_tau);
                     else
-                        % t-tau_k(t) is greater than t(end), use
-                        % extrapolation.                    
-                        isLongStep((k-1)*n+1:k*n,j) = true;
+                        % t-tau(t) is greater than t(end), use extrapolation.                    
+                        %disp('Performing long step.')
+                        isLongStep((l-1)*n+1:l*n,j) = true;
                         if size(x,2)<2
                             warning('NOT ENOUGH POINTS FOR EXTRAPOLATION')
                             x_next=inf(3*n,1);
                             return
                         end
-                        x0_tau=x(2*n+1:3*n,end-1);
-                        X_tau=reshape(x(:,end),n,3);
-                        h_tau = t(end)-t(end-1);
-                        % Extrapolate with Neville-Aitken.
-                        xtau((k-1)*n+1:k*n,j) = nevilleAitken(t(end-1)+[0;c]*h_tau,[x0_tau,X_tau],t_tau);
+                    x0_tau=x(2*n+1:3*n,end-1);
+                    X_tau=reshape(x(:,end),n,3);
+                    h_tau = t(end)-t(end-1);
+                    % Extrapolate with Neville-Aitken.
+                    xtau((l-1)*n+1:l*n,j) = nevilleAitken(t(end-1)+[0;c]*h_tau,[x0_tau,X_tau],t_tau);
                     end
                 end
-            end % for k
-        end % for j
-    end % if i==1
+            end
+        end
+    end
     
-    % Compute g(t) = B(t)*x(t-tau)+f(t).
+    % Compute b(t) = B(t)*x(t-tau)+f(t).
     for j=1:3
-        gtij(:,j)=Btij(:,:,j)*xtau(:,j)+ftij(:,j);
+        btij(:,j)=Btij(:,:,j)*xtau(:,j)+ftij(:,j);
     end
     % Solve the linear system.
-    x_next = solveLinSystem(Etij,Atij,gtij,x(:,end),h);
+    x_next = solveLinSystem(Etij,Atij,btij,x(:,end),h);
     
     % No correction needed if we did not perform a long step.
-    if not(isLongStep)
+    if sum(isLongStep)==0
         return
     end
     
@@ -365,30 +402,25 @@ for i=1:options.MaxCorrect
     % just computed new cubic polynomial.
     xtau_corrected = xtau;
     for j=1:3
-        tau_j = tau(t(end)+c(j)*h);
-        for k=1:l
-            if isLongStep(k*n,j)
-                t_tau = t(end)+c(j)*h-tau_j(k);
-                x0_tau=x(2*n+1:3*n,end);
-                X_tau=reshape(x_next,n,3);
-                % interpolate with Neville-Aitken
-                xtau_corrected((k-1)*n+1:k*n,j) = nevilleAitken(t(end)+[0;c]*h,[x0_tau,X_tau],t_tau);
-            end
-        end
+        t_tau = t(end)+c(j)*h-tau(t(end)+c(j)*h);
+        x0_tau=x(2*n+1:3*n,end);
+        X_tau=reshape(x_next,n,3);
+        % interpolate with Neville-Aitken
+        xtau_corrected(:,j) = nevilleAitken(t(end)+[0;c]*h,[x0_tau,X_tau],t_tau);
     end
     
     % If the corrected x(t-tau) differs too much from the extrapolated one,
     % we recompute the polynomial using xtau_corrected instead of xtau. 
-    if or(norm(xtau_corrected(isLongStep)-xtau(isLongStep))/norm(xtau_corrected(isLongStep))*h<options.RelTol,norm(xtau_corrected(isLongStep)-xtau(isLongStep))*h<options.AbsTol)
+    if or(norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))/norm(xtau_corrected(:,isLongStep))*h<options.RelTol,norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))*h<options.AbsTol)
         %fprintf('Corrected after %d steps.\n',i)
         return
     else
         if i==options.MaxCorrect
-            fprintf('Correction of x(t-tau(t)) failed after MaxCorrect=%d iterations.\nRemaining relative residual: %e\nRemaining absolute residual: %e\n',i,norm(xtau_corrected(isLongStep)-xtau(isLongStep))/norm(xtau_corrected(isLongStep))*h,norm(xtau_corrected(isLongStep)-xtau(isLongStep))*h)
+        fprintf('Correction of x(t-tau(t)) failed after MaxCorrect=%d iterations.\nRemaining relative residual: %e\nRemaining absolute residual: %e\n',i,norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))/norm(xtau_corrected(:,isLongStep))*h,norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))*h)
         end
-        xtau(isLongStep)=xtau_corrected(isLongStep);
+        xtau(:,isLongStep)=xtau_corrected(:,isLongStep);
     end
-end%for i
+end
 function x_next = solveLinSystem(Etij,Atij,ftij,xi,h)
 % Supporting function for solving the linear system to determine the next
 % polyno
@@ -421,53 +453,72 @@ for i=1:n-1
     end
 end
 px=px(:,1);
-function [E_1,A_1,B_1,f_1,A_2,B_2,f_2,mu,K] = getRegularizedSystem(E,A,B,f,tau,ti,options)
+
+function [E_1,A_1,B_1,f_1,A_2,B_2,f_2,mu,K,U,Z1,Z2] = getRegularizedSystem(E,A,B,f,tau,ti,options,m,n)
 %TODO more comments
 KMax=options.MaxShift;
 muMax=options.MaxStrIdx;
 tolR=options.RelTol;
 K0=max(0,options.Shift);
 mu0=options.StrIdx;
-
-l = numel(tau(ti));
-
+k = numel(tau(ti));
 % tolerance for the matrix differential
 tol= tolR;
-E0 = E(ti);
-[m,n]=size(E0);
+%E0 = E(ti);
+% [m,n]=size(E0);
 muMax = max(mu0,muMax);
 %
-% container for the derivative arrays of the original and timeshifted
-% systems
-NMP = zeros((muMax+1)*m*(KMax+1),(muMax+2)*n*(KMax+1));
+% container for the Double Inflated SYStem
+DISYS = zeros((muMax+1)*m*(KMax+1),(muMax+2)*n*(KMax+1));
 %                                                      .
-% logical indices corresponding to the coefficients of x and x in NMP
+% logical indices corresponding to the coefficients of x and x in DISYS
 idx2M = false((muMax+2)*n*(KMax+1),1);
 idx2M(n+1:2*n) = true;
 idx2N = false((muMax+2)*n*(KMax+1),1);
 idx2N(1:n) = true;
-t_shifted = zeros(KMax+1,1);
+t_shifted = nan(KMax+1,1);
 t_shifted(1) = ti;
-for i = 1:KMax
-    t_shifted(i+1) = fsolve(@(t1) t1-tau(t1)-t_shifted(i),t_shifted(i)+tau(t_shifted(i)),optimset('Display','off'));
+if k==1
+    for l=1:KMax
+        t_shifted(l+1) = fsolve(@(t1) t1-tau(t1)-t_shifted(l),t_shifted(l)+tau(t_shifted(l)),optimset('Display','off'));
+    end
 end
 for K = 0:KMax
-    % logical indices for selecting certain rows and columns in NMP
+    % logical indices for selecting certain rows and columns in DISYS
     idx1 = false((muMax+1)*m*(KMax+1),1);
     idx2 = false((muMax+2)*n*(KMax+1),1);
     
+    mu_provided = inf;
+    % User provided derivative array.
+    if isfield(options,'DArray')
+        inflateEA_provided = feval(options.DArray{1},t_shifted(K+1));
+        inflateB_provided = feval(options.DArray{2},t_shifted(K+1));
+        mu_provided = size(inflateEA_provided,1)/m-1;
+    end
+        
     for mu = 0:muMax
-        NMP((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+2)*n)+K*(muMax+2)*n) = inflateEA(E,A,t_shifted(K+1),mu,tolR);
+        if mu>mu_provided
+            warning('PLEASE PROVIDE MORE DERIVATIVES OR USE NO DERIVATIVE ARRAYS.');
+        end
+        if isfield(options,'DArray') && mu<=mu_provided
+            DISYS((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+2)*n)+K*(muMax+2)*n) = inflateEA_provided((1:(mu+1)*m),(1:(mu+2)*n));
+        else
+            DISYS((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+2)*n)+K*(muMax+2)*n) = inflateEA(E,A,t_shifted(K+1),mu,tolR);
+        end
         if K>0
-            if l>1
-                error('EITHER THE DDAE IS NON-CAUSAL OR ITS STRANGENESS INDEX IS TOO BIG. CONDERNING THE FIRST CASE, REGULARIZATION FOR DDAES WITH MULTIPLE DELAYS HAS NOT BEEN IMPLEMENTED YET.')
+            if k>1
+                error('REGULARIZATION FOR NONCAUSAL DDAES WITH MULTIPLE DELAYS NOT IMPLEMENTED YET.')
             end
-            NMP((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+1)*n)+(K-1)*(muMax+2)*n) = -inflateB(B,t_shifted(K+1),tau,mu,tolR,m,n);
+            if isfield(options,'DArray') && mu<=mu_provided
+                DISYS((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+1)*n)+(K-1)*(muMax+2)*n) = -inflateB_provided(1:(mu+1)*m,1:(mu+1)*n);
+            else
+                DISYS((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+1)*n)+(K-1)*(muMax+2)*n) = -inflateB(B,t_shifted(K+1),tau,mu,tolR,m,n);
+            end
             if K<K0
                 continue;
             end
             % logical indices for the coefficients of x(t+tau), x(t+2*tau),
-            % ..., x(t+K*tau) and its derivatives up to order mu in NMP
+            % ..., x(t+K*tau) and its derivatives up to order mu in DISYS
             for i = 1:K
                 idx1((1:(mu+1)*m)+i*(muMax+1)*m)=true;
                 idx2((1:(mu+2)*n)+i*(muMax+2)*n)=true;
@@ -477,67 +528,74 @@ for K = 0:KMax
             continue;
         end
         % logical indices for the coefficients of x and its derivatives up 
-        % to order mu in NMP
+        % to order mu in DISYS
         idx1(1:(mu+1)*m) = true;
         idx2((2*n+1):(mu+2)*n) = true;
         %
         % extract a system without x(t+tau), x(t+2*tau), ..., x(t+K*tau) and its derivatives
-        U1 = null2(NMP(idx1,idx2)',tolR);
-        M = U1'*NMP(idx1,idx2M);
-        N = -U1'*NMP(idx1,idx2N);
-        P = U1(1:(mu+1)*m,:)'*inflateB(B,ti,tau,mu,tolR,m,n);
-        %
-        % TODO SOME COMMENTS
-        Z2 = null2([M,P(:,n+1:(mu+1)*n)]',tolR);
-        Z1 = orth2(M,tolR);
-        %
-        % extract the coefficients of the algebraic variables
-        A_2 = Z2'*N;
+        U1 = null2(DISYS(idx1,idx2)',tolR);
+        U2 = orth2(U1'*DISYS(idx1,or(idx2N,idx2M)),tolR);
+        U=U1*U2;
+        M = U'*DISYS(idx1,idx2M);
+        N = -U'*DISYS(idx1,idx2N);
+        if isfield(options,'DArray') && mu<=mu_provided
+            P = U(1:(mu+1)*m,:)'*inflateB_provided(1:(mu+1)*m,1:(mu+1)*k*n);
+        else
+            P = U(1:(mu+1)*m,:)'*inflateB(B,ti,tau,mu,tolR,m,n);
+        end
         
+        % extract the coefficients of the algebraic variables
+        Z2 = null2(M',tolR);
+        A_2 = Z2'*N;
         T2 = null2(A_2,tolR);
+        
+        Z1 = orth2(M*T2,tolR);
+        E_1 = Z1'*M;
         
         % check if the number of (linearly independent) algebraic equations
         % a and differential equations d is equal to the number of
         % variables n, if not then continue by increasing mu or K
         a = rank(A_2,tolR);
-        if norm(isnan(Z1'*M*T2)+isinf(Z1'*M*T2),1)>0
-            Z1(isnan(Z1))=0;
-        end
-        d = rank(Z1'*M*T2,tolR);
+        d = rank(E_1,tolR);
         if a+d~=n
             continue
         end
-        
-        % remove redundant algebraic equations
-        if size(A_2,1)>0
-            Y2 = orth2(A_2,tolR);
-            A_2 = Y2'*A_2;
-            % update the selector Z2
-            Z2 = Z2*Y2;
-        end
-        B_2 = Z2'*P(:,1:l*n);
-        
-        % extract the coefficients of the differential variables
-        E_1 = Z1'*M;
-        % remove redundant equations
-        Y1 = orth2(E_1*T2,tolR);
-        E_1 = Y1'*E_1;
-        % update the selector Z2
-        Z1 = Z1*Y1;
-        
-        % check if the derivatives of x(t-tau) vanish in the differential
-        % part
-        B_1 = Z1'*P;
-        if mu>0 && d>0
-            if max(max(abs(B_1(:,l*n+1:end))))>tolR*max(max(B_1),1)
-                error('ACCORDING TO THE CHOSEN TOLERANCE, THE SYSTEM IS OF ADVANCED TYPE, USING THE METHOD OF STEPS MIGHT PRODUCE LARGE ERRORS.')
+%         % remove redundant algebraic equations
+%         if size(A_2,1)>0
+%             Y2 = orth2(A_2,tolR);
+%             A_2 = Y2'*A_2;
+%             % update the selector Z2
+%             Z2 = Z2*Y2;
+%         end
+
+        % check for advanceness, i.e. wether the solution depends on
+        % derivatives of x(t-tau)
+        B_2 = Z2'*P;
+        if mu>0 && a>0
+            if max(max(abs(B_2(:,k*n+1:end))))>tolR*max(max(max(B_2)),1)
+                error('ACCORDING TO THE CHOSEN TOLERANCE, THE DDAE IS ADVANCED. THIS SOLVER CAN NOT HANDLE ADVANCED DDAES YET.')
             end
         end
-        B_1 = B_1(:,1:l*n);
+        B_2 = B_2(:,1:k*n);
+        B_1 = Z1'*P;
+        if mu>0 && d>0
+            if max(max(abs(B_1(:,k*n+1:end))))>tolR*max(max(max(B_1)),1)
+                error('ACCORDING TO THE CHOSEN TOLERANCE, THE DDAE IS ADVANCED. THIS SOLVER CAN NOT HANDLE ADVANCED DDAES YET.')
+            end
+        end
+        B_1 = B_1(:,1:k*n);
         
         % extract the algebraic and differential parts for f and the
         % differential parts for E, A and B
-        g = U1'*inflatef(f,t_shifted,K,mu,tol,m);
+        g = nan((mu+1)*m*(K+1),1);
+        if isfield(options,'DArray') && mu<=mu_provided
+            for j = 0:K
+                g(j*(mu+1)*m+1:(j+1)*(mu+1)*m) = feval(options.DArray{3},t_shifted(j+1));
+            end
+        else
+            g = inflateAndShiftf(f,t_shifted,K,mu,tol,m);     
+        end
+        g = U'*g;
         f_2 = Z2'*g;
         A_1 = Z1'*N;
         f_1 = Z1'*g;
@@ -601,44 +659,44 @@ function P  = inflateB(B,tK,tau,mu,tol,m,n)
 %
 % it is hard coded up to mu = 3 because we haven't found a nice forumla yet
 % mu could be arbitrary in principle
-l=numel(tau(tK));
+k=numel(tau(tK));
 B0 = B(tK);
 switch mu
     case 0
         P = B0;
     case 1
-        B1 = matrixDifferential(B,tK,1,tol,m,l*n);
-        tau1 = matrixDifferential(tau,tK,1,tol,1,l);
+        B1 = matrixDifferential(B,tK,1,tol,m,k*n);
+        tau1 = matrixDifferential(tau,tK,1,tol,1,k);
         
         P = [
-            B0,zeros(m,l*n);
-            B1,B0*(1-tau1)
+            B0,zeros(m,k*n);
+            B1,B0.*kron((1-tau1),ones(m,n))
             ];
     case 2
-        B1 = matrixDifferential(B,tK,1,tol,m,l*n);
-        B2 = matrixDifferential(B,tK,2,tol,m,l*n);
-        tau1 = matrixDifferential(tau,tK,1,tol,1,l);
-        tau2 = matrixDifferential(tau,tK,2,tol,1,l);
+        B1 = matrixDifferential(B,tK,1,tol,m,k*n);
+        B2 = matrixDifferential(B,tK,2,tol,m,k*n);
+        tau1 = matrixDifferential(tau,tK,1,tol,1,k);
+        tau2 = matrixDifferential(tau,tK,2,tol,1,k);
         P = [
-            B0,zeros(m,2*l*n);
-            B1,B0*(1-tau1),zeros(m,l*n);
-            B2,2*B1*(1-tau1)-B0*tau2,B0*(1-tau1)^2
+            B0,zeros(m,2*k*n);
+            B1,B0.*kron(1-tau1,ones(m,n)),zeros(m,k*n);
+            B2,2*B1.*kron(1-tau1,ones(m,n))-B0.*kron(tau2,ones(m,n)),B0.*kron((1-tau1)^2,ones(m,n))
             ];
     case 3
-        B1 = matrixDifferential(B,tK,1,tol,m,l*n);
-        B2 = matrixDifferential(B,tK,2,tol,m,l*n);
-        B3 = matrixDifferential(B,tK,3,tol,m,l*n);
-        tau1 = matrixDifferential(tau,tK,1,tol,1,l);
-        tau2 = matrixDifferential(tau,tK,2,tol,1,l);
-        tau3 = matrixDifferential(tau,tK,3,tol,1,l);
+        B1 = matrixDifferential(B,tK,1,tol,m,k*n);
+        B2 = matrixDifferential(B,tK,2,tol,m,k*n);
+        B3 = matrixDifferential(B,tK,3,tol,m,k*n);
+        tau1 = matrixDifferential(tau,tK,1,tol,1,k);
+        tau2 = matrixDifferential(tau,tK,2,tol,1,k);
+        tau3 = matrixDifferential(tau,tK,3,tol,1,k);
         P = [
-            B0,zeros(m,3*l*n);
-            B1,B0*(1-tau1),zeros(m,2*l*n);
-            B2,2*B1*(1-tau1)-B0*tau2,B0*(1-tau1)^2,zeros(m,l*n);
-            B3,3*B2*(1-tau1)-3*B1*tau2-B0*tau3,3*B1*(1-tau1)^2-3*B0*(1-tau1)*tau2,B0*(1-tau1)^3
+            B0,zeros(m,3*k*n);
+            B1,B0.*kron(1-tau1,ones(m,n)),zeros(m,2*k*n);
+            B2,2*B1.*kron(1-tau1,ones(m,n))-B0.*kron(tau2,ones(m,n)),B0.*kron((1-tau1)^2,ones(m,n)),zeros(m,k*n);
+            B3,3*B2.*kron(1-tau1,ones(m,n))-3*B1.*kron(tau2,ones(m,n))-B0.*kron(tau3,ones(m,n)),3*B1.*kron((1-tau1)^2,ones(m,n))-3*B0.*kron((1-tau1)*tau2,ones(m,n)),B0.*kron((1-tau1)^3,ones(m,n))
             ];
 end
-function g  = inflatef(f,t_shifted,K,mu,tol,m)
+function g  = inflateAndShiftf(f,t_shifted,K,mu,tol,m)
 % Builds the vector
 %    _                  _
 %   |                    |
