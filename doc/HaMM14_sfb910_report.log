@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.3-1.40.12 (MiKTeX 2.9) (preloaded format=pdflatex 2012.8.18)  25 DEC 2014 03:02
+This is pdfTeX, Version 3.1415926-2.3-1.40.12 (MiKTeX 2.9) (preloaded format=pdflatex 2012.8.18)  25 DEC 2014 03:30
 entering extended mode
 **C:/Users/Ma*Vinh*Tho/Documents/GitHub/DDAE/doc/HaMM14_sfb910_report.tex
 ("C:/Users/Ma Vinh Tho/Documents/GitHub/DDAE/doc/HaMM14_sfb910_report.tex"
@@ -406,6 +406,13 @@ Overfull \hbox (10.7732pt too wide) in paragraph at lines 392--392
  []
 
 [6] [7] [8]
+Overfull \hbox (4.53996pt too wide) in paragraph at lines 614--619
+\OT1/cmr/bx/n/10 Analytical so-lu-tion: \OT1/cmr/m/it/10 The prob-lem [] pos-se
+sses the unique so-lu-tion $\OML/cmm/m/it/10 x\OT1/cmr/m/n/10 (\OML/cmm/m/it/10
+ t\OT1/cmr/m/n/10 ) = []$
+ []
+
+
 Overfull \hbox (24.88086pt too wide) in paragraph at lines 629--629
 [] 
  []
@@ -453,7 +460,7 @@ Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 731.
 Here is how much of TeX's memory you used:
  7862 strings out of 494045
  108347 string characters out of 3145951
- 219118 words of memory out of 3000000
+ 219102 words of memory out of 3000000
  10969 multiletter control sequences out of 15000+200000
  10860 words of font info for 43 fonts, out of 3000000 for 9000
  715 hyphenation exceptions out of 8191
@@ -479,7 +486,7 @@ ype1/public/amsfonts/cm/cmti8.pfb><C:/Program Files (x86)/MiKTeX 2.9/fonts/type
 public/amsfonts/symbols/msam10.pfb><C:/Program Files (x86)/MiKTeX 2.9/fonts/typ
 e1/public/amsfonts/symbols/msbm10.pfb><C:/Program Files (x86)/MiKTeX 2.9/fonts/
 type1/public/amsfonts/symbols/msbm7.pfb>
-Output written on HaMM14_sfb910_report.pdf (12 pages, 378370 bytes).
+Output written on HaMM14_sfb910_report.pdf (12 pages, 377804 bytes).
 PDF statistics:
  376 PDF objects out of 1000 (max. 8388607)
  95 named destinations out of 1000 (max. 500000)

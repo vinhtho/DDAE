@@ -116,7 +116,7 @@ The most important concepts presented in this work are the causality, the system
 Under the assumption that the continuous, piecewise differentiable solution of the problem \eqref{eq1.1} exists and is unique, the implementation of the new 
 solver is based on the regularization procedure introduced in \cite{HaM14}, which first determines the shift index and 
 the strangeness index and then transforms the DDAE \eqref{eq1.1a} into a regular, strangeness-free formulation with the same solution set. 
-Using this regularization procedure, we can also compute a consistent initial value, if $\phi(t_0)$ is not consistent, i. e. does not satisfy all (hidden) constaints, and apply any integration scheme on the 
+Using this regularization procedure, we can also compute a consistent initial value, if $\phi(t_0)$ is not consistent, i.e., does not satisfy all (hidden) constaints, and apply any integration scheme on the 
 resulting regular, strangeness-free DDAE. We implemented the Radau IIA method, which is a collocation Runge-Kutta method.
 %
 %=======================================================================================================================================
@@ -339,7 +339,7 @@ where $\m{Z_1^T E(t) \\ Y^T_2 Z^T_2 M(:,1:n)}$ is nonsingular.
 In order to handle noncausal DDAEs with single delay, in \cite{HaM14}, the authors proposed the concept of the \emph{shift index} as follows.
 %
 \begin{definition}\label{shift index}
-Consider the IVP \eqref{eq1.1}. For each $t\in \mathbb{I}$, consider the sequence $\{\th{j}| j\geq 0\}$, starting with $\th{0}=t$, 
+Consider the problem \eqref{eq1.1}. For each $t\in \mathbb{I}$, consider the sequence $\{\th{j}| j\geq 0\}$, starting with $\th{0}=t$, 
 determined via the equation 
 %
 \be\label{eq14}
@@ -483,7 +483,7 @@ where ${\cal L}_j(\tet)$ is the Lagrange polynomial of degree $s$ satisfying ${\
 The existence and uniqueness, and the convergence results for the numerical approximation $\mathrm{X}_{\pi}$ are stated in the following theorem.
 
 \begin{theorem}\label{Thm6.1}
-Consider the IVP \eqref{eq1.1} and assume that it is uniquely solvable and of either retarded or neutral type. 
+Consider the problem \eqref{eq1.1} and assume that it is uniquely solvable and of either retarded or neutral type. 
 For $N \in \hro{N}$ and $s \geq 1$, define the mesh $\pi$ and the collocation points $t_{ij}$, $j=1,\dots,s$ as in \eqref{eq3.3}. 
 Then the following assertions hold.
 \begin{compactenum}
@@ -495,7 +495,7 @@ Then the following assertions hold.
   \| \mathrm{X}_e(t) - \mathrm{X}_{\pi}(t) \|_{\infty} = \underset{t \in \bbI}{\sup} \| \mathrm{X}_e(t) - \mathrm{X}_{\pi}(t) \| = O(h^s),
  \]
 %
- where $\mathrm{X}_e$ is the exact solution  $x \in C^{s+1}(\bbI,\C^n)$ to the IVP \eqref{eq1.1}.
+ where $\mathrm{X}_e$ is the exact solution  $x \in C^{s+1}(\bbI,\C^n)$ to the problem \eqref{eq1.1}.
 \end{compactenum}
 \end{theorem}
 \begin{proof}
@@ -582,7 +582,7 @@ for $t>0$ and $x(t)=\phi(t)$ for $t\leq 0$ with
 \esq
 %
 {\bf Analytical solution:} \quad $x(t)=\phi(t)$ for $t>0$.\\
-The relative error of the numerical solution of the IVP \eqref{eq20} is presented in Figure \ref{fig_Paul}.
+The relative error of the numerical solution of \eqref{eq20} is presented in Figure \ref{fig_Paul}.
 \end{example}
 %
 \begin{example}\label{Exa2} We consider the following DDAE
@@ -614,7 +614,7 @@ x(t-1), && \mbox{for all } t>0,\\
 \end{equation}
 %
 Note that the DDAE \eqref{eq21} is reformulated from the neutral DDE $\dot{x}(t)=x(t)+\dot{x}(t-1)$ by introducing a new variable to present $x(t-1)$.\\
-{\bf Analytical solution:}\quad The IVP \eqref{eq21} possesses the unique solution 
+{\bf Analytical solution:}\quad The problem \eqref{eq21} possesses the unique solution 
 $x(t)= \m{x_1(t) \\ x_2(t)}$ given by
 \begin{align*}
 x_1(t)=
@@ -628,13 +628,13 @@ e^t & \mbox{ for } 0<t\leq1, \\
 \ec
 \end{align*}
 and
-$x_2(t)=x_1(t-1)$. The relative error of the numerical solution of the IVP \eqref{eq20} is also presented in Figure \ref{fig_Paul}.
+$x_2(t)=x_1(t-1)$. The relative error of the numerical solution of \eqref{eq20} is also presented in Figure \ref{fig_Paul}.
 
 \begin{figure}[h]
  \centering
  \includegraphics[width=\textwidth]{plot_149_214.pdf}
  % Paul_149.pdf: 0x0 pixel, 300dpi, 0.00x0.00 cm, bb= 
- \caption{Relative error of the solution of the IVP \eqref{eq20} (left) and \eqref{eq21} (right).}
+ \caption{Relative error of the solution of \eqref{eq20} (left) and \eqref{eq21} (right).}
  \label{fig_Paul}
 \end{figure}
 \end{example}
@@ -667,7 +667,7 @@ e^t\\
 && \mbox{for all } t \leq 0.
 \end{aligned}
 \end{equation}
-The function $f(t)$ is chosen such that the analytical solution is $x(t)=\phi(t)$. The relative error of the numerical solution of the IVP \eqref{eq22} is presented in Figure \ref{fig_222}.
+The function $f(t)$ is chosen such that the analytical solution is $x(t)=\phi(t)$. The relative error of the numerical solution of \eqref{eq22} is presented in Figure \ref{fig_222}.
 \end{example}
 
 \begin{example} We consider the following linear DDAE with constant coefficients and time-varying delay. This DDAE 
@@ -706,7 +706,7 @@ The relative error of the numerical solution of the IVP \eqref{eq23} is also pre
  \centering
  \includegraphics[width=\textwidth]{plot_222_varshifted.pdf}
  % Paul_149.pdf: 0x0 pixel, 300dpi, 0.00x0.00 cm, bb= 
- \caption{Relative error of the solution of the IVP \eqref{eq22} (left) and \eqref{eq23} (right).}
+ \caption{Relative error of the solution of \eqref{eq22} (left) and \eqref{eq23} (right).}
  \label{fig_222}
 \end{figure}
 \end{example}
