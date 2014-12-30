@@ -516,7 +516,7 @@ for K = 0:KMax
                 error('REGULARIZATION FOR NONCAUSAL DDAES WITH MULTIPLE DELAYS NOT IMPLEMENTED YET.')
             end
             % Works only for single delay.
-            t_shifted(K+1) = fsolve(@(t1) t1-tau(t1)-t_shifted(K),t_shifted(K)+tau(t_shifted(K)),optimset('Display','off','TolFun',tol,'TolX',tol));
+            t_shifted(K+1) = fsolve(@(t1) t1-tau(t1)-t_shifted(K),t_shifted(K)+tau(t_shifted(K)),optimset('Display','off',));
             if isfield(options,'DArray') && mu<=mu_provided
                 DISYS((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+1)*n)+(K-1)*(muMax+2)*n) = -inflateB_provided(1:(mu+1)*m,1:(mu+1)*n);
             else
