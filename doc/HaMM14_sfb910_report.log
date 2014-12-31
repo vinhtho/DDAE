@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.3-1.40.12 (MiKTeX 2.9) (preloaded format=pdflatex 2012.8.18)  25 DEC 2014 03:30
+This is pdfTeX, Version 3.1415926-2.3-1.40.12 (MiKTeX 2.9) (preloaded format=pdflatex 2012.8.18)  31 DEC 2014 13:15
 entering extended mode
 **C:/Users/Ma*Vinh*Tho/Documents/GitHub/DDAE/doc/HaMM14_sfb910_report.tex
 ("C:/Users/Ma Vinh Tho/Documents/GitHub/DDAE/doc/HaMM14_sfb910_report.tex"
@@ -406,36 +406,36 @@ Overfull \hbox (10.7732pt too wide) in paragraph at lines 392--392
  []
 
 [6] [7] [8]
-Overfull \hbox (4.53996pt too wide) in paragraph at lines 614--619
+Overfull \hbox (4.53996pt too wide) in paragraph at lines 613--618
 \OT1/cmr/bx/n/10 Analytical so-lu-tion: \OT1/cmr/m/it/10 The prob-lem [] pos-se
 sses the unique so-lu-tion $\OML/cmm/m/it/10 x\OT1/cmr/m/n/10 (\OML/cmm/m/it/10
  t\OT1/cmr/m/n/10 ) = []$
  []
 
 
-Overfull \hbox (24.88086pt too wide) in paragraph at lines 629--629
+Overfull \hbox (24.88086pt too wide) in paragraph at lines 628--628
 [] 
  []
 
-<plot_149_214.pdf, id=235, 711.65875pt x 341.275pt>
+<plot_149_214.pdf, id=239, 711.65875pt x 341.275pt>
 File: plot_149_214.pdf Graphic file (type pdf)
  <use plot_149_214.pdf>
-Package pdftex.def Info: plot_149_214.pdf used on input line 635.
+Package pdftex.def Info: plot_149_214.pdf used on input line 634.
 (pdftex.def)             Requested size: 370.38374pt x 177.61502pt.
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 [9]
-Overfull \hbox (6.88402pt too wide) detected at line 701
+Overfull \hbox (0.773pt too wide) detected at line 700
 [][] []
  []
 
-<plot_222_varshifted.pdf, id=257, 711.65875pt x 341.275pt>
+<plot_222_varshifted.pdf, id=261, 711.65875pt x 341.275pt>
 File: plot_222_varshifted.pdf Graphic file (type pdf)
 
 <use plot_222_varshifted.pdf>
-Package pdftex.def Info: plot_222_varshifted.pdf used on input line 707.
+Package pdftex.def Info: plot_222_varshifted.pdf used on input line 706.
 (pdftex.def)             Requested size: 370.38374pt x 177.61502pt.
 
 
@@ -446,25 +446,25 @@ LaTeX Warning: `!h' float specifier changed to `!ht'.
 Underfull \vbox (badness 4492) has occurred while \output is active []
 
  [11 <C:/Users/Ma Vinh Tho/Documents/GitHub/DDAE/doc/plot_222_varshifted.pdf>])
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 731.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 730.
  [12]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 731.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 730.
 
 ("C:\Users\Ma Vinh Tho\Documents\GitHub\DDAE\doc\HaMM14_sfb910_report.aux")
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 731.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 731.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 730.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 730.
 Package rerunfilecheck Info: File `HaMM14_sfb910_report.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 731.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 730.
  ) 
 Here is how much of TeX's memory you used:
- 7862 strings out of 494045
- 108347 string characters out of 3145951
- 219102 words of memory out of 3000000
- 10969 multiletter control sequences out of 15000+200000
+ 7866 strings out of 494045
+ 108400 string characters out of 3145951
+ 219118 words of memory out of 3000000
+ 10972 multiletter control sequences out of 15000+200000
  10860 words of font info for 43 fonts, out of 3000000 for 9000
  715 hyphenation exceptions out of 8191
- 34i,23n,35p,484b,465s stack positions out of 5000i,500n,10000p,200000b,50000s
+ 34i,23n,35p,497b,469s stack positions out of 5000i,500n,10000p,200000b,50000s
 <C:/Program Files (x86)/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmbx10.pfb>
 <C:/Program Files (x86)/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmbx8.pfb><C:
 /Program Files (x86)/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmcsc10.pfb><C:/
@@ -486,9 +486,9 @@ ype1/public/amsfonts/cm/cmti8.pfb><C:/Program Files (x86)/MiKTeX 2.9/fonts/type
 public/amsfonts/symbols/msam10.pfb><C:/Program Files (x86)/MiKTeX 2.9/fonts/typ
 e1/public/amsfonts/symbols/msbm10.pfb><C:/Program Files (x86)/MiKTeX 2.9/fonts/
 type1/public/amsfonts/symbols/msbm7.pfb>
-Output written on HaMM14_sfb910_report.pdf (12 pages, 377804 bytes).
+Output written on HaMM14_sfb910_report.pdf (12 pages, 378900 bytes).
 PDF statistics:
- 376 PDF objects out of 1000 (max. 8388607)
- 95 named destinations out of 1000 (max. 500000)
+ 380 PDF objects out of 1000 (max. 8388607)
+ 96 named destinations out of 1000 (max. 500000)
  11 words of extra memory for PDF output out of 10000 (max. 10000000)
 

@@ -1,0 +1,86 @@
+This is pdfTeX, Version 3.1415926-2.3-1.40.12 (MiKTeX 2.9) (preloaded format=pdftex 2014.12.31)  31 DEC 2014 11:41
+entering extended mode
+**C:/Users/Ma*Vinh*Tho/Documents/GitHub/DDAE/doc/HaMM14.bib
+("C:/Users/Ma Vinh Tho/Documents/GitHub/DDAE/doc/HaMM14.bib"
+Overfull \hbox (17.57957pt too wide) in paragraph at lines 54--64
+\tenrm ta-tional math-e-mat-ics, url=http://books.google.de/books?id=njbvAAAAMA
+AJ, year=1991, pub-lisher=Springer|
+
+\hbox(7.5+2.5)x469.75499, glue set - 1.0
+.\tenrm t
+.\tenrm a
+.\discretionary
+..\tenrm -
+.\tenrm t
+.\tenrm i
+.etc.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 54--64
+
+
+\hbox(0.0+0.0)x469.75499
+.\glue(\rightskip) 0.0
+
+
+Overfull \hbox (69.66309pt too wide) in paragraph at lines 129--145
+\tenrm 56, year = 2006, doi = 10.1016/j.apnum.2005.04.025, issn = 0168-9274, ur
+l = http://dx.doi.org/10.1016/j.apnum.2005.04.025,|
+
+\hbox(7.5+2.5)x469.75499, glue set - 1.0
+.\tenrm 5
+.\tenrm 6
+.\tenrm ,
+.\glue 3.33333 plus 2.08331 minus 0.88889
+.\tenrm y
+.etc.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 129--145
+
+
+\hbox(0.0+0.0)x469.75499
+.\glue(\rightskip) 0.0
+
+
+Overfull \hbox (70.85747pt too wide) in paragraph at lines 146--159
+\tenrm and Runge--Kutta Meth-ods, vol-ume = 52, year = 2014, doi = 10.1137/1108
+47093, url = http://dx.doi.org/10.1137/110847093,|
+
+\hbox(7.5+2.5)x469.75499, glue set - 1.0
+.\tenrm a
+.\tenrm n
+.\tenrm d
+.\glue 3.33333 plus 1.66666 minus 1.11111
+.\tenrm R
+.etc.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 146--159
+
+
+\hbox(0.0+0.0)x469.75499
+.\glue(\rightskip) 0.0
+
+[1{C:/ProgramData/MiKTeX/2.9/pdftex/config/pdftex.map}]
+Overfull \hbox (15.57571pt too wide) in paragraph at lines 238--249
+\tenrm in-sti-tu-tion = In-sti-tut fur Math-e-matik, TU Berlin, note = \tentt 
+url: http://www.math.tu-berlin.de/preprints/\tenrm ,|
+
+\hbox(6.94444+2.22223)x469.75499, glue set - 1.0
+.\tenrm i
+.\tenrm n
+.\discretionary
+..\tenrm -
+.\tenrm s
+.\tenrm t
+.etc.
+
+)
+*
+! Emergency stop.
+<*> ...nh*Tho/Documents/GitHub/DDAE/doc/HaMM14.bib
+                                                  
+End of file on the terminal!
+
+!  ==> Fatal error occurred, no output PDF file produced!

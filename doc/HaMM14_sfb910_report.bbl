@@ -80,6 +80,12 @@ Phi Ha, Volker Mehrmann, and Andreas Steinbrecher.
   equations.
 \newblock {\em J. Dynam. Differential Equations}, pages 1--26, 2014.
 
+\bibitem{HaiW91}
+E.~Hairer and G.~Wanner.
+\newblock {\em Solving Ordinary Differential Equations {II}: Stiff and
+  Differential-Algebraic Problems}.
+\newblock Springer-Verlag, Berlin, Germany, 1st edition, 1991.
+
 \bibitem{Hau97}
 R~Hauber.
 \newblock Numerical treatment of retarded differential algebraic equations by

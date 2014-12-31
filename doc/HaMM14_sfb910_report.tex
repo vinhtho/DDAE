@@ -71,7 +71,7 @@ Germany; \{ha,mavinh,mehrmann\}@math.tu-berlin.de}
 \vskip 0.2cm
 
 \begin{abstract}
-We discuss the new solver COLDDAE for the numerical solution of linear differential-algebraic equations (DDAEs) of retarded and neutral type. The implementation is mainly based on the results introduced in \cite{HaM14}. In the single delay case, the solver can handle noncausal systems, i.e., systems, where the solution does not only depend on past and current states, but also future states.
+We discuss the new solver COLDDAE for the numerical solution of linear differential-algebraic equations (DDAEs) of retarded and neutral type. The implementation is mainly based on the results introduced in \cite{HaM14}. In the single delay case, the solver can handle noncausal systems, i.e., systems, where the solution does not only depend on the system's past and current states, but also future states.
 \end{abstract}
 
 \begin{keywords} Delay differential-algebraic equation, differential-algebraic equation, delay differential equations, method of steps, derivative array, classification of DDAEs.
@@ -116,8 +116,8 @@ The most important concepts presented in this work are the causality, the system
 Under the assumption that the continuous, piecewise differentiable solution of the problem \eqref{eq1.1} exists and is unique, the implementation of the new 
 solver is based on the regularization procedure introduced in \cite{HaM14}, which first determines the shift index and 
 the strangeness index and then transforms the DDAE \eqref{eq1.1a} into a regular, strangeness-free formulation with the same solution set. 
-Using this regularization procedure, we can also compute a consistent initial value, if $\phi(t_0)$ is not consistent, i.e., does not satisfy all (hidden) constaints, and apply any integration scheme on the 
-resulting regular, strangeness-free DDAE. We implemented the Radau IIA method, which is a collocation Runge-Kutta method.
+Using this regularization procedure, we can also compute a consistent initial value, if $\phi(t_0)$ is not consistent, i.e., does not satisfy all (hidden) constraints, and apply any appropriate integration scheme on the 
+resulting regular, strangeness-free DDAE. We implemented the Radau IIA method of order 5, which is a 3-stage collocation Runge-Kutta method, see \cite{HaiW91}.
 %
 %=======================================================================================================================================
 \section{A brief survey of the basic results}
@@ -158,7 +158,7 @@ consider for example the equation
   0 \cdot \dot{x}(t) = 0 \cdot x(t) - x(t-\tau) + f(t), \quad \mbox{for all } t\in (0,\infty).
 \ee
 %
-The method of steps applied to the DDAE \eqref{eq2.1} results in a sequence of undetermined DAEs of the form
+The method of steps applied to the DDAE \eqref{eq2.1} results in a sequence of underdetermined DAEs of the form
 %
 \[
  0 = g_i(t), \quad \mbox{for all } t \in [t_0+(j-1)\utau,t_0+j\utau]. 
@@ -202,7 +202,7 @@ We also call $\mu$ the strangeness index of the pair $(E,A)$.
 For the numerical determination of the strangeness index and the strangeness-free formulation \eqref{s-free form}, we refer the readers to 
 \cite{KunMRW97,KunMS05}.
 
-Now we apply this regularization procedure to the DDAE \eqref{eq1.1a}, which is assumed to be causal, and obtain the strangeness-free DDAE
+Now we apply this regularization procedure to the DDAE \eqref{eq1.1a}, which is assumed to be causal, and obtain the \emph{strangeness-free DDAE}
 %
 %\be\label{eq5}
  %\m{\hE_{1}(t) \\ 0 \\ 0} \dot{x}(t) \!=\! \m{\hA_{1}(t) \\ \hA_{2}(t) \\ 0} x(t) \!+\!
@@ -226,7 +226,7 @@ For the DAE \eqref{eq4}, the numerical solution $x(t)$ is obtained by integratin
 advantageous, see \cite{KunM96a,KunM96c,KunM06}.
 For the DDAE \eqref{eq1.1a}, integrating the strangeness-free DDAE \eqref{eq5} is not always possible. The reason is that if 
 at least one of the matrix functions $\hB_{i,j,2}$ is not identically zero, then the underlying DDE 
-is of advanced type, which is not suitable for numerical integration, \cite{BelZ03}. In fact, to the best of the authors' knowledge, until now there has been no solver for general advanced DDEs. 
+is of advanced type, which is not suitable for numerical integration, \cite{BelZ03}. In fact, until now there has been no solver for general advanced DDEs. 
 For the numerical solution, solvers based on the method of steps are only suitable for retarded and neutral DDAEs, see \cite{AscP95,GugH07,Hau97,HaM14}.
 In these cases, the strangeness-free DDAE \eqref{eq5} takes the form
 %
@@ -237,7 +237,7 @@ In these cases, the strangeness-free DDAE \eqref{eq5} takes the form
 %
 The integration strategy we use for causal, retarded/neutral DDAEs of the form \eqref{eq1.1a} is: first, determine the strangeness-free formulation 
 \eqref{eq6}, and second, apply numerical methods to \eqref{eq6} to compute $x(t)$.\\
-In the following  we set $k=1$, $B(t):=B_1(t)$, $\tau(t):=\tau_1(t)$ for notational convenience and without loss of generality.
+Without loss of generality, we set $k=1$, $B(t):=B_1(t)$ and  $\tau(t):=\tau_1(t)$ for notational convenience.
 For the determination of the strangeness-free DDAE \eqref{eq6}, we use the derivative array of the DDAE as follows.
 %
 \bens
@@ -274,7 +274,7 @@ where
 %
 Note that the $j$-th block row of $P$ is obtained by computing the coefficients of
 $\left({\ddt}\right)^{j-1}\left(B(t) x(t-\tau(t))\right)$, $j=1,\dots,\mu$. 
-These coefficients can also be computed by using Fa\`{a} di Bruno's formula \cite{Cra05}, which describes the $m$-th derivative of the 
+These coefficients can be computed by using Fa\`{a} di Bruno's formula \cite{Cra05}, which describes the $m$-th derivative of the 
 composite function $g(f(x))$ in the variable $x$ as follows
 %
 \be\label{Faa di Bruno}
@@ -391,18 +391,17 @@ Using \eqref{eq14}, we can rewrite the shift-inflated system \eqref{eq13} as
 }
 \ee
 %
-As shown in \cite{HaM14}, assuming that the DDAE \eqref{eq1.1a} is not of advanced type, we can extract from the DAE \eqref{eq15} a strangeness-free DDAE 
+As shown in \cite{HaM14}, assuming that the DDAE \eqref{eq1.1a} is not of advanced type and the strangeness index $\mu$ is well-defined for the DAE \eqref{eq15}, we can extract from the DAE \eqref{eq15} a strangeness-free DDAE 
 %
 \be\label{eq16}
  \m{\hE_{1}(\th{0}) \\ 0} \dot{x}(\th{0}) \!=\! \m{\hA_{1}(\th{0}) \\ \hA_{2}(\th{0})} x(\th{0}) \!+\!
  \m{\hB_{1}(\th{0}) \\ \hB_{2}(\th{0})} x(\th{0}-\tau(\th{0})) \!+\! \m{\hf_{1}(\th{0}) \\ \hf_{2}(\th{0})}, \ \pm{d \\ a}
 \ee
 %
-where $\m{\hE_{1}(\th{0}) \\ \hA_{2}(\th{0})}$ is nonsingular, i.e.,  $d+a=n$.\\
+where $\m{\hE_{1}(\th{0}) \\ \hA_{2}(\th{0})}$ is nonsingular.\\
 Analogous to the case of causal DDAEs, we build the derivative arrays \eqref{eq7} for system \eqref{eq15}, and extract from it the 
 strangeness-free DDAE \eqref{eq16}. To keep the brevity of the paper, we will not repeat the process.
-It has been observed in \cite{HaM14} that the main difference between causal DDAEs and noncausal DDAEs, in the determination of the 
-strangeness-free DDAEs, are:
+It has been observed in \cite{HaM14} that the main differences between regularizing causal DDAEs and regularizing noncausal DDAEs are:
 \begin{enumerate}
  \item[i)] The size of the derivative arrays \eqref{eq7} for noncausal DDAEs is bigger than for causal DDAEs.
  \item[ii)] For noncausal DDAEs the set of differential equations in the strangeness-free formulation \eqref{eq6} cannot be selected from the original DDAE \eqref{eq1.1a}, but must be 
@@ -416,8 +415,8 @@ First, we observe that the resulting system of the regularization procedure for 
  \m{\hE_1(t) \\ 0} \dot{x}(t) = \m{\hA_1(t) \\ \hA_2(t)} x(t) + \sum_{i=1}^k\m{\hB_{i,1}(t) \\ \hB_{i,2}(t)} x(t-\tau_i(t)) + \m{\hga_1(t) \\ \hga_2(t)}, 
 \ee
 %
-with $k=1$ in the noncausal case. We now apply numerical methods to \eqref{eq3.1} to determine $x(t)$.
-Again, we set  $k=1$ also for the causal case wihtout loss of generality and notational convenience.
+where $k=1$ for noncausal DDAEs. We now apply numerical methods to \eqref{eq3.1} to determine $x(t)$.
+Again, we set  $k=1$ also for the causal case without loss of generality and for notational convenience.
 \\
 Adopted from the solver RADAR5 \cite{GugH07}, we use the Radau scheme for the numerical integration, which is given by nodes
 %
@@ -435,7 +434,7 @@ The collocation points therefore are
   t_{ij} = t_i + h_i \de_j, \qquad j=1,\dots,s, 
 \ee
 %
-where $h_i$ is the stepsize used at the $i$-th step.
+where $h_i$ is the step size used at the $i$-th step.
 For the numerical approximation of the solution, we seek for the piecewise polynomial $\mathrm{X}_{\pi}$ of degree $s$, i.e., 
 $\mathrm{X}_{\pi,i}:=\mathrm{X}_{\pi}|_{[t_i,t_{i+1}]}$ are polynomials of degree $s$, which are determined by the following set of equations  
 %
@@ -455,7 +454,7 @@ $\mathrm{X}_{\pi}(t_{ij}-\tau(t_{ij}))$ which is an approximation to $x(t_{ij}-\
 &  \mathrm{X}_{\pi}(t_{ij}-\tau(t_{ij})) \\
  & =  
  \bc
-  \phi(t_{ij}-\tau(t_{ij}))                & \mbox{if } t_{ij}-\tau(t_{ij}) \leq t_0, \\
+  \phi(t_{ij}-\tau(t_{ij}))                & \mbox{if } t_{ij}-\tau(t_{ij}) < t_0, \\
   \mathrm{X}_{\pi,K}(t_{ij}-\tau(t_{ij}))  & \mbox{for $ 1 \leq K \leq N-1$ with } t_K < t_{ij}-\tau(t_{ij}) \leq t_{K+1}.
  \ec
 } 
@@ -505,9 +504,9 @@ For the proof see Theorem 4, \cite{Hau97} or Theorem 4.2, \cite{GugH07}.
 
 \section{Using COLDDAE}
 
-The solver COLDDAE, implemented in Matlab, can handle both causal and noncausal systems of retarded and neutral type, but as already stated above, we restrict the noncausal systems to have only one delay. If the system has a hidden advancedness, an appropriate error message is thrown.
+The solver COLDDAE, implemented in Matlab, can handle both causal and noncausal DDAEs of retarded and neutral type, but as already stated above, we restrict the noncausal systems to have only one delay. If the system is of advanced type, an appropriate error message is thrown.
 We have implemented step size control and so-called long steps, i.e.,  the step size may become bigger than the delay. 
-Unless the user provides the exact dervative array, the strangeness index can be at most three due to hard coding during the approximation of $P$ in equation \eqref{eq7} by finite differences.
+Unless the user provides the exact derivative array, i.e. $M$, $P$ and $g$ from equation \eqref{eq7}, the strangeness index of the system \eqref{eq15} can be at most three due to hard coding in the computation of $P$.
 
 In the following we will describe the parameters inside the solver.
 
@@ -545,7 +544,7 @@ The following fields are available in this solver:
 \item {\tt MaxShift}\quad    Upper bound for the strangeness index,  default: {\tt 3}.
 \item {\tt InitVal  }\quad    Initial value, not necessarily consistent,  default: $\phi(t_0)$.
 \item {\tt IsConst}\quad   A boolean, {\tt true} if $E,A,B,\tau$ are constant, the regularized system is then computed only once, default: {\tt false}.
-\item {\tt DArray}\quad    Struct with three fields containing $M$, $P$ and $g$, see \eqref{eq7},  default: not set.
+\item {\tt DArray}\quad    Struct with three fields containing $M$, $P$ (or $[P_1,\ldots,P_k]$ for $k>1$) and $g$ from equation \eqref{eq7}.  default: not set.
 \end{itemize}
 
 \subsection{Output parameters}
@@ -582,7 +581,7 @@ for $t>0$ and $x(t)=\phi(t)$ for $t\leq 0$ with
 \esq
 %
 {\bf Analytical solution:} \quad $x(t)=\phi(t)$ for $t>0$.\\
-The relative error of the numerical solution of \eqref{eq20} is presented in Figure \ref{fig_Paul}.
+The relative error of the numerical solution of \eqref{eq20} with $m=2$ is presented in Figure \ref{fig_Paul}.
 \end{example}
 %
 \begin{example}\label{Exa2} We consider the following DDAE
@@ -641,7 +640,7 @@ $x_2(t)=x_1(t-1)$. The relative error of the numerical solution of \eqref{eq20} 
 
 \begin{example} 
 We consider the following DDAE with constant coefficients and multiple time-varying delays. This DDAE is causal and it has 
-strangeness index two or differentiation index three.
+strangeness index two.
 %
 \begin{equation}\label{eq22}
 \begin{aligned}
@@ -689,7 +688,7 @@ is noncausal and it has strangeness index one and shift index one.
 0&1\\
 0&1
 }
-\m{x_1\left(t-1+\frac{\sin(t)}2\right) \\ x_2\left(t-1+\frac{\sin(t)}2\right)}
+\m{x_1\bigl(t-1+\frac{\sin(t)}2\bigr) \\ x_2\bigl(t-1+\frac{\sin(t)}2\bigr)}
 +f(t), && \mbox{for all } t>0,\\
 \phi(t) &=
 \m{
@@ -719,7 +718,7 @@ The relative error of the numerical solution of the IVP \eqref{eq23} is also pre
 % \item using exact derivatives for the regularization (provided by user).
 % \end{enumerate}
 
-\section*{Acknowledgment} The authors would like to thank Benjamin Unger for useful 
+\section*{Acknowledgment} The first two authors would like to thank Benjamin Unger for useful 
 suggestions and comments.
 
 %-------------------------------------------------------------------------------
