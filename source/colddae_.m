@@ -464,12 +464,11 @@ function [E_1,A_1,B_1,f_1,A_2,B_2,f_2,mu,K,U,Z1,Z2] = getRegularizedSystem(E,A,B
 %TODO more comments
 KMax=options.MaxShift;
 muMax=options.MaxStrIdx;
-tolR=options.RelTol;
+AbsTol=options.AbsTol;
+RelTol=options.RelTol;
 K0=max(0,options.Shift);
 mu0=options.StrIdx;
 k = numel(tau(ti));
-% tolerance for the matrix differential
-tol= tolR;
 %E0 = E(ti);
 % [m,n]=size(E0);
 muMax = max(mu0,muMax);
@@ -509,18 +508,19 @@ for K = 0:KMax
         if isfield(options,'DArray') && mu<=mu_provided
             DISYS((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+2)*n)+K*(muMax+2)*n) = inflateEA_provided((1:(mu+1)*m),(1:(mu+2)*n));
         else
-            DISYS((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+2)*n)+K*(muMax+2)*n) = inflateEA(E,A,t_shifted(K+1),mu,tolR);
+            DISYS((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+2)*n)+K*(muMax+2)*n) = inflateEA(E,A,t_shifted(K+1),mu,RelTol);
         end
         if K>0
             if k>1
                 error('REGULARIZATION FOR NONCAUSAL DDAES WITH MULTIPLE DELAYS NOT IMPLEMENTED YET.')
             end
             % Works only for single delay.
-            t_shifted(K+1) = fsolve(@(t1) t1-tau(t1)-t_shifted(K),t_shifted(K)+tau(t_shifted(K)),optimset('Display','off','TolFun',tol,'TolX',tol));
+%             t_shifted(K+1) = fsolve(@(t1) t1-tau(t1)-t_shifted(K),t_shifted(K)+tau(t_shifted(K)),optimset('Display','off','TolFun',RelTol,'TolX',RelTol));
+            t_shifted(K+1) = newton(@(t1) t1-tau(t1)-t_shifted(K),t_shifted(K)+tau(t_shifted(K)),AbsTol,10);
             if isfield(options,'DArray') && mu<=mu_provided
                 DISYS((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+1)*n)+(K-1)*(muMax+2)*n) = -inflateB_provided(1:(mu+1)*m,1:(mu+1)*n);
             else
-                DISYS((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+1)*n)+(K-1)*(muMax+2)*n) = -inflateB(B,t_shifted(K+1),tau,mu,tolR,m,n);
+                DISYS((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+1)*n)+(K-1)*(muMax+2)*n) = -inflateB(B,t_shifted(K+1),tau,mu,RelTol,m,n);
             end
             if K<K0
                 continue;
@@ -540,59 +540,86 @@ for K = 0:KMax
         idx1(1:(mu+1)*m) = true;
         idx2((2*n+1):(mu+2)*n) = true;
         %
-        % extract a system without x(t+tau), x(t+2*tau), ..., x(t+K*tau) and its derivatives
-        U1 = null2(DISYS(idx1,idx2)',tolR);
-        U2 = orth2(U1'*DISYS(idx1,or(idx2N,idx2M)),tolR);
-        U=U1*U2;
-        M = U'*DISYS(idx1,idx2M);
-        N = -U'*DISYS(idx1,idx2N);
-        if isfield(options,'DArray') && mu<=mu_provided
-            P = U(1:(mu+1)*m,:)'*inflateB_provided(1:(mu+1)*m,1:(mu+1)*k*n);
-        else
-            P = U(1:(mu+1)*m,:)'*inflateB(B,ti,tau,mu,tolR,m,n);
-        end
+        % extract a system without x(t+tau), x(t+2*tau), ..., x(t+K*tau)
+        % and its derivatives and without derivatives of x(t-tau)
+        U1 = null2(DISYS(idx1,idx2)',AbsTol);
         
-        % extract the coefficients of the algebraic variables
-        Z2 = null2(M',tolR);
+        % Apperently, the two lines below lead to an error, the intention
+        % was to eliminate redundancy, but P is not considered here
+%         U2 = orth2(U1'*DISYS(idx1,or(idx2N,idx2M)),tol);
+%         U=U1*U2;
+        
+        M = U1'*DISYS(idx1,idx2M);
+        N = -U1'*DISYS(idx1,idx2N);
+        
+        % First extract the characteristic values
+        Z2 = null2(M',AbsTol);
         A_2 = Z2'*N;
-        T2 = null2(A_2,tolR);
-        
-        Z1 = orth2(M*T2,tolR);
+        T2 = null2(A_2,AbsTol);
+        Z1 = orth2(M*T2,AbsTol);
         E_1 = Z1'*M;
         
         % check if the number of (linearly independent) algebraic equations
         % a and differential equations d is equal to the number of
         % variables n, if not then continue by increasing mu or K
-        a = rank(A_2,tolR);
-        d = rank(E_1,tolR);
-        if a+d~=n
+        a = rank(A_2,AbsTol);
+        d = rank(E_1,AbsTol);
+        if a+d<n
             continue
         end
-%         % remove redundant algebraic equations
-%         if size(A_2,1)>0
-%             Y2 = orth2(A_2,tolR);
-%             A_2 = Y2'*A_2;
-%             % update the selector Z2
-%             Z2 = Z2*Y2;
-%         end
+        
+        if isfield(options,'DArray') && mu<=mu_provided
+            P = U1(1:(mu+1)*m,:)'*inflateB_provided(1:(mu+1)*m,1:(mu+1)*k*n);
+        else
+            P = U1(1:(mu+1)*m,:)'*inflateB(B,ti,tau,mu,RelTol,m,n);
+        end
+        U2 = null2(P(:,k*n+1:end)',AbsTol);
+        P = U2'*P(:,1:k*n);
+        M = U2'*M;
+        N = U2'*N;
+        Z2 = null2(M',AbsTol);
+        A_2 = Z2'*N;
+        T2 = null2(A_2,AbsTol);
+        Z1 = orth2(M*T2,AbsTol);
+        E_1 = Z1'*M;
+        
+        if or(rank(A_2,AbsTol)~=a,rank(E_1,AbsTol)~=d)
+            error('ACCORDING TO THE CHOSEN TOLERANCE, THE DDAE IS ADVANCED. THIS SOLVER CAN NOT HANDLE ADVANCED DDAES YET.')
+        end
+        
+        % remove redundant algebraic equations
+        if size(A_2,1)>a
+            Y2 = orth2(A_2,AbsTol);
+            A_2 = Y2'*A_2;
+            % update the selector Z2
+            Z2 = Z2*Y2;
+        end
+        
+        % remove redundant differential equations
+        if size(E_1,1)>d
+            Y1 = orth2(E_1,tol);
+            E_1 = Y1'*E_1;
+            % update the selector Z1
+            Z2 = Z2*Y2;
+        end
 
         % check for advanceness, i.e. wether the solution depends on
         % derivatives of x(t-tau)
         B_2 = Z2'*P;
-        if mu>0 && a>0
-            if max(max(abs(B_2(:,k*n+1:end))))>tolR*max(max(max(B_2)),1)
-                error('ACCORDING TO THE CHOSEN TOLERANCE, THE DDAE IS ADVANCED. THIS SOLVER CAN NOT HANDLE ADVANCED DDAES YET.')
-            end
-        end
-        B_2 = B_2(:,1:k*n);
+%         if mu>0 && a>0
+%             if max(max(abs(B_2(:,k*n+1:end))))>tol*max(max(max(B_2)),1)
+%                 error('ACCORDING TO THE CHOSEN TOLERANCE, THE DDAE IS ADVANCED. THIS SOLVER CAN NOT HANDLE ADVANCED DDAES YET.')
+%             end
+%         end
+%         B_2 = B_2(:,1:k*n);
         B_1 = Z1'*P;
-        if mu>0 && d>0
-            if max(max(abs(B_1(:,k*n+1:end))))>tolR*max(max(max(B_1)),1)
-                error('ACCORDING TO THE CHOSEN TOLERANCE, THE DDAE IS ADVANCED. THIS SOLVER CAN NOT HANDLE ADVANCED DDAES YET.')
-            end
-        end
-        B_1 = B_1(:,1:k*n);
-        
+%         if mu>0 && d>0
+%             if max(max(abs(B_1(:,k*n+1:end))))>tol*max(max(max(B_1)),1)
+%                 error('ACCORDING TO THE CHOSEN TOLERANCE, THE DDAE IS ADVANCED. THIS SOLVER CAN NOT HANDLE ADVANCED DDAES YET.')
+%             end
+%         end
+%         B_1 = B_1(:,1:k*n);
+%         
         % extract the algebraic and differential parts for f and the
         % differential parts for E, A and B
         g = nan((mu+1)*m*(K+1),1);
@@ -601,8 +628,9 @@ for K = 0:KMax
                 g(j*(mu+1)*m+1:(j+1)*(mu+1)*m) = feval(options.DArray{3},t_shifted(j+1));
             end
         else
-            g = inflateAndShiftf(f,t_shifted,K,mu,tol,m);     
+            g = inflateAndShiftf(f,t_shifted,K,mu,RelTol,m);     
         end
+        U=U1*U2;
         g = U'*g;
         f_2 = Z2'*g;
         A_1 = Z1'*N;
@@ -611,7 +639,23 @@ for K = 0:KMax
     end
 end
 error('MAXIMAL NUMBER OF SHIFTS AND STRANGENESS REDUCTION STEPS REACHED. REGULARIZATION OF THE DDAE FAILED.')
-function NM = inflateEA( E,A,t,mu,tolR )
+function xn = newton(f,x0,AbsTol,MaxIter)
+% Newton's method for a scalar function f..
+for i=1:MaxIter
+    f0 = f(x0);
+    if f0<=AbsTol
+        xn = x0;
+        return
+    end
+    Df0 = matrixDifferential(f,x0,1,AbsTol,1,1);
+    xn = x0-f0/Df0;
+    if abs(xn-x0)<=AbsTol
+        return
+    end
+    x0 = xn;
+end
+
+function NM = inflateEA( E,A,t,mu,tol )
 % Computes the derivative array of (E,A) by differentiating mu times.
 %   INPUT
 %   -----
@@ -619,7 +663,7 @@ function NM = inflateEA( E,A,t,mu,tolR )
 %   A       fcn_handle      m-by-n matrix function
 %   t       double          the time
 %   mu      double          the strangeness index
-%   tolR    double          the relative tolerance
+%   tol    double          the relative tolerance
 %
 %   OUTPUT
 %   ------
@@ -641,8 +685,8 @@ dA(1:m,1:n) = A0;
 NM(1:m,n+1:2*n) = E0;
 for l = 1:mu
     % Make dE and dA contain all derivatives up to order l.
-    dE(l*m+1:(l+1)*m,1:n) = matrixDifferential( E,t,l,tolR,m,n);
-    dA(l*m+1:(l+1)*m,1:n) = matrixDifferential( A,t,l,tolR,m,n);
+    dE(l*m+1:(l+1)*m,1:n) = matrixDifferential( E,t,l,tol,m,n);
+    dA(l*m+1:(l+1)*m,1:n) = matrixDifferential( A,t,l,tol,m,n);
     %Expand M_(l-1) to M_l.
     for j = 0:l-1
         k = l-j;
@@ -750,8 +794,9 @@ end
 if min(min(isfinite(dA)))==0
     warning('ERROR IN matrixDifferential.m!')
 end
-function Z = null2(A,tol)
-% Slight modification of MATLAB's null function.
+function Z = null2(A,AbsTol)
+% Slight modification of MATLAB's null function. Singular values smaller
+% than abstol are considered to be zero.
 [m,n] = size(A);
 [~,S,V]=svd(A,0);
 if m > 1
@@ -760,10 +805,11 @@ elseif m == 1
     s = S(1);
 else s = 0;
 end
-r = sum(s > max(m,n) * max(s(1),1) * tol);
+r = sum(s > AbsTol);
 Z = V(:,r+1:n);
-function Q = orth2(A,tol)
-% Slight modification of MATLAB's orth function.
+function Q = orth2(A,AbsTol)
+% Slight modification of MATLAB's orth function. Singular values smaller
+% than abstol are considered to be zero.
 if isempty(A)
     Q=A;
     return;
@@ -774,5 +820,5 @@ if m > 1, s = diag(S);
 elseif m == 1, s = S(1);
 else s = 0;
 end
-r = sum(s > max(m,n) * max(s(1),1) * tol);
+r = sum(s > AbsTol);
 Q = U(:,1:r);

@@ -276,6 +276,8 @@ for j=1:3
         end
     end
 
+    BXTAUF = @(s) B(s)*evalAllHistFuncs(hist_funcs,s,tau(s),n,l)+f(s);
+
     % calculate locally regularized (i.e. strangeness-free) form at t =
     % t(i)-c(j)*h
     % we already have E1 and A1, if isConst is TRUE
@@ -286,24 +288,17 @@ for j=1:3
         mu = options.RegularSystem{4};
         Z1 = options.RegularSystem{5};
         Z2 = options.RegularSystem{6};
-        
-        if isfield(options,'DArray') && mu<mu_provided
-            g_provided =             
-        else
-            g = zeros((mu+1)*m,1);
-            BXTAUF = @(s) B(s)*evalAllHistFuncs(hist_funcs,s,tau(s),n,l)+f(s);
-            for k = 0:mu
-                g(k*m+1:(k+1)*m) = matrixDifferential(BXTAUF,t(end)+c(j)*h,k,tolR,m,1);
-            end
-            g1 = Z1'*(BXTAUF(t(end)+c(j)*h));
+        g = zeros((mu+1)*m,1);
+        for k = 0:mu
+            g(k*m+1:(k+1)*m) = matrixDifferential(BXTAUF,t(end)+c(j)*h,k,tolR,m,1);
         end
+        g1 = Z1'*(BXTAUF(t(end)+c(j)*h));
         if numel(Z2)>0
             g2 = Z2'*g;
         else
             g2 = zeros(0,1);
         end
     else
-        BXTAUF = @(s) B(s)*evalAllHistFuncs(hist_funcs,s,tau(s),n,l)+f(s);
         [E1,A1,g1,A2,g2,mu,~,Z2] = getRegularizedSystem(E,A,BXTAUF,t(end)+c(j)*h,options);
         if mu > info.Strangeness_index
             info.Strangeness_index = mu;
@@ -438,6 +433,7 @@ else
 end
 A_1 = Z1'*A(ti);
 f_1 = Z1'*f(ti);
+if rank(A_)
 function NM = inflateEA( E,A,t,mu,tolR )
 % Computes the derivative array of (E,A) by differentiating mu times.
 %   INPUT
