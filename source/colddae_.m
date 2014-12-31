@@ -101,9 +101,8 @@ if ~isfield(options,'MinStep')   options.MinStep = 0; end
 if ~isfield(options,'MaxStep')   options.MaxStep = inf; end
 
 % tolerances
-if ~isfield(options,'AbsTol')    options.AbsTol = 1e-5; end
-if ~isfield(options,'RelTol')    options.RelTol = 1e-5; end
-if ~isfield(options,'LagTol')    options.LagTol = 1e-5; end
+if ~isfield(options,'AbsTol')    options.AbsTol = 1e-7; end
+if ~isfield(options,'RelTol')    options.RelTol = 1e-7; end
 
 % the DDAE's indeces (guesses, if unknown)
 if ~isfield(options,'StrIdx')    options.StrIdx = 0; end
@@ -276,8 +275,10 @@ function [x_next,info] = timeStep(E,A,B,f,tau,phi,t,x,h,options,m,n,info)
 % OR a long step, i.e. h>tau and x(t-tau) has to be predicted using
 % extrapolation of the last computed cubic polynomial, with index
 % reduction. After extrapolating and computing the current cubic
-% polynomial, we will eventually get a new x(t-tau(t)) that differs from
-% the 
+% polynomial, we will eventually get a new x(t-tau(t)) by interpolating 
+% that differs from the extrapolated x(t-tau(t)). We use the new computed
+% x(t-tau(t)) to compute a hopefully more exact cubic polynomial. This can
+% be done over and over again and hopefully this process converges.
 
 % The vector c comes from the Butcher tableau of the 3-stage Radar IIa
 % method.
@@ -302,7 +303,6 @@ for i=1:options.MaxCorrect
     if i==1
         % For each collocation point...
         for j=1:3
-            
             % Calculate locally regularized form at t = t(i)-c(j)*h.
             if options.IsConst
                 E1 = options.RegSystem{1};
@@ -461,35 +461,33 @@ end
 px=px(:,1);
 
 function [E_1,A_1,B_1,f_1,A_2,B_2,f_2,mu,K,U,Z1,Z2] = getRegularizedSystem(E,A,B,f,tau,ti,options,m,n)
-%TODO more comments
+% Calculates the regular system of the DDAE given by the triple (E,A,B)
+% locally at the point t=ti.
 KMax=options.MaxShift;
 muMax=options.MaxStrIdx;
-AbsTol=options.AbsTol;
-RelTol=options.RelTol;
+% We use AbsTol for calculating null spaces, ranges and use it in the
+% Newton method.
+AbsTol=options.AbsTol; 
+% RelTol is used for matrix_differential
+RelTol=options.RelTol; 
 K0=max(0,options.Shift);
 mu0=options.StrIdx;
 k = numel(tau(ti));
-%E0 = E(ti);
-% [m,n]=size(E0);
 muMax = max(mu0,muMax);
-%
-% container for the Double Inflated SYStem
+
+% Container for the Double Inflated SYStem.
 DISYS = zeros((muMax+1)*m*(KMax+1),(muMax+2)*n*(KMax+1));
-%                                                      .
-% logical indices corresponding to the coefficients of x and x in DISYS
+
+% Logical indices of to the coefficients of x and \dot{x} in DISYS.
 idx2M = false((muMax+2)*n*(KMax+1),1);
 idx2M(n+1:2*n) = true;
 idx2N = false((muMax+2)*n*(KMax+1),1);
 idx2N(1:n) = true;
 t_shifted = nan(KMax+1,1);
 t_shifted(1) = ti;
-% if k==1
-%     for l=1:KMax
-%         t_shifted(l+1) = fsolve(@(t1) t1-tau(t1)-t_shifted(l),t_shifted(l)+tau(t_shifted(l)),optimset('Display','off'));
-%     end
-% end
+
 for K = 0:KMax
-    % logical indices for selecting certain rows and columns in DISYS
+    % Logical indices for selecting certain rows and columns in DISYS.
     idx1 = false((muMax+1)*m*(KMax+1),1);
     idx2 = false((muMax+2)*n*(KMax+1),1);
     
@@ -514,8 +512,8 @@ for K = 0:KMax
             if k>1
                 error('REGULARIZATION FOR NONCAUSAL DDAES WITH MULTIPLE DELAYS NOT IMPLEMENTED YET.')
             end
-            % Works only for single delay.
-%             t_shifted(K+1) = fsolve(@(t1) t1-tau(t1)-t_shifted(K),t_shifted(K)+tau(t_shifted(K)),optimset('Display','off','TolFun',RelTol,'TolX',RelTol));
+            % Compute t(K+1) = t' which fulfills t'-tau(t') = t(K). Works
+            % only for single delay.
             t_shifted(K+1) = newton(@(t1) t1-tau(t1)-t_shifted(K),t_shifted(K)+tau(t_shifted(K)),AbsTol,10);
             if isfield(options,'DArray') && mu<=mu_provided
                 DISYS((1:(mu+1)*m)+K*(muMax+1)*m,(1:(mu+1)*n)+(K-1)*(muMax+2)*n) = -inflateB_provided(1:(mu+1)*m,1:(mu+1)*n);
@@ -539,35 +537,32 @@ for K = 0:KMax
         % to order mu in DISYS
         idx1(1:(mu+1)*m) = true;
         idx2((2*n+1):(mu+2)*n) = true;
-        %
-        % extract a system without x(t+tau), x(t+2*tau), ..., x(t+K*tau)
-        % and its derivatives and without derivatives of x(t-tau)
-        U1 = null2(DISYS(idx1,idx2)',AbsTol);
         
+        % Extract a system without x(t+tau), x(t+2*tau), ..., x(t+K*tau)
+        % and its derivatives.
+        U1 = null2(DISYS(idx1,idx2)',AbsTol);
         % Apperently, the two lines below lead to an error, the intention
-        % was to eliminate redundancy, but P is not considered here
+        % was to eliminate redundancy, but P is not considered here, so
 %         U2 = orth2(U1'*DISYS(idx1,or(idx2N,idx2M)),tol);
 %         U=U1*U2;
-        
         M = U1'*DISYS(idx1,idx2M);
         N = -U1'*DISYS(idx1,idx2N);
         
-        % First extract the characteristic values
+        % We determine the characteristic values a and d and check wether
+        % we have a regular system, i.e. a+d=n.
         Z2 = null2(M',AbsTol);
         A_2 = Z2'*N;
         T2 = null2(A_2,AbsTol);
         Z1 = orth2(M*T2,AbsTol);
         E_1 = Z1'*M;
-        
-        % check if the number of (linearly independent) algebraic equations
-        % a and differential equations d is equal to the number of
-        % variables n, if not then continue by increasing mu or K
         a = rank(A_2,AbsTol);
         d = rank(E_1,AbsTol);
         if a+d<n
             continue
         end
         
+        % Now we eliminate all equations which contain derivatives of
+        % x(t-tau).
         if isfield(options,'DArray') && mu<=mu_provided
             P = U1(1:(mu+1)*m,:)'*inflateB_provided(1:(mu+1)*m,1:(mu+1)*k*n);
         else
@@ -577,51 +572,34 @@ for K = 0:KMax
         P = U2'*P(:,1:k*n);
         M = U2'*M;
         N = U2'*N;
+        
+        % If the system is not advanced, then we still should be able to
+        % extract a regular system with a+d=n, if not, then we very likely
+        % have an advanced system.
         Z2 = null2(M',AbsTol);
         A_2 = Z2'*N;
         T2 = null2(A_2,AbsTol);
         Z1 = orth2(M*T2,AbsTol);
         E_1 = Z1'*M;
-        
         if or(rank(A_2,AbsTol)~=a,rank(E_1,AbsTol)~=d)
             error('ACCORDING TO THE CHOSEN TOLERANCE, THE DDAE IS ADVANCED. THIS SOLVER CAN NOT HANDLE ADVANCED DDAES YET.')
         end
         
-        % remove redundant algebraic equations
+        % Remove redundant algebraic and differential equations.
         if size(A_2,1)>a
             Y2 = orth2(A_2,AbsTol);
             A_2 = Y2'*A_2;
             % update the selector Z2
             Z2 = Z2*Y2;
         end
-        
-        % remove redundant differential equations
         if size(E_1,1)>d
             Y1 = orth2(E_1,tol);
             E_1 = Y1'*E_1;
             % update the selector Z1
             Z2 = Z2*Y2;
         end
-
-        % check for advanceness, i.e. wether the solution depends on
-        % derivatives of x(t-tau)
-        B_2 = Z2'*P;
-%         if mu>0 && a>0
-%             if max(max(abs(B_2(:,k*n+1:end))))>tol*max(max(max(B_2)),1)
-%                 error('ACCORDING TO THE CHOSEN TOLERANCE, THE DDAE IS ADVANCED. THIS SOLVER CAN NOT HANDLE ADVANCED DDAES YET.')
-%             end
-%         end
-%         B_2 = B_2(:,1:k*n);
-        B_1 = Z1'*P;
-%         if mu>0 && d>0
-%             if max(max(abs(B_1(:,k*n+1:end))))>tol*max(max(max(B_1)),1)
-%                 error('ACCORDING TO THE CHOSEN TOLERANCE, THE DDAE IS ADVANCED. THIS SOLVER CAN NOT HANDLE ADVANCED DDAES YET.')
-%             end
-%         end
-%         B_1 = B_1(:,1:k*n);
-%         
-        % extract the algebraic and differential parts for f and the
-        % differential parts for E, A and B
+        
+        % Compute the rest of the regular system.
         g = nan((mu+1)*m*(K+1),1);
         if isfield(options,'DArray') && mu<=mu_provided
             for j = 0:K
@@ -632,8 +610,10 @@ for K = 0:KMax
         end
         U=U1*U2;
         g = U'*g;
+        B_2 = Z2'*P;
         f_2 = Z2'*g;
         A_1 = Z1'*N;
+        B_1 = Z1'*P;
         f_1 = Z1'*g;
         return
     end
