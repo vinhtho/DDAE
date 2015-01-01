@@ -433,9 +433,6 @@ else
 end
 A_1 = Z1'*A(ti);
 f_1 = Z1'*f(ti);
-if rank(A_2)~=3
-    disp('ddhd')
-end
 function NM = inflateEA( E,A,t,mu,tolR )
 % Computes the derivative array of (E,A) by differentiating mu times.
 %   INPUT
