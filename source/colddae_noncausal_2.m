@@ -400,26 +400,32 @@ for i=1:options.MaxCorrect
     end
     
     % Otherwise we can correct the extrapolated x(t-tau) by evaluating the
-    % just computed new cubic polynomial.
+    % just computed cubic polynomial given in x_next.
     xtau_corrected = xtau;
     for j=1:3
+        % Note that t_tau is a vector in the multiple delay case!
         t_tau = t(end)+c(j)*h-tau(t(end)+c(j)*h);
         x0_tau=x(2*n+1:3*n,end);
         X_tau=reshape(x_next,n,3);
-        % interpolate with Neville-Aitken
-        xtau_corrected(:,j) = nevilleAitken(t(end)+[0;c]*h,[x0_tau,X_tau],t_tau);
+        % Interpolate with Neville-Aitken, if x(t-tau_k) was computed with
+        % a long step.
+        for l=1:k
+            if isLongStep(l*n,j)
+                xtau_corrected((l-1)*n+1:l*n,j) = nevilleAitken(t(end)+[0;c]*h,[x0_tau,X_tau],t_tau(l));
+            end
+        end
     end
     
     % If the corrected x(t-tau) differs too much from the extrapolated one,
     % we recompute the polynomial using xtau_corrected instead of xtau. 
-    if or(norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))/norm(xtau_corrected(:,isLongStep))*h<options.RelTol,norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))*h<options.AbsTol)
+    if or(norm(xtau_corrected(isLongStep)-xtau(isLongStep))/norm(xtau_corrected(isLongStep))*h<options.RelTol,norm(xtau_corrected(isLongStep)-xtau(isLongStep))*h<options.AbsTol)
         %fprintf('Corrected after %d steps.\n',i)
         return
     else
         if i==options.MaxCorrect
-        fprintf('Correction of x(t-tau(t)) failed after MaxCorrect=%d iterations.\nRemaining relative residual: %e\nRemaining absolute residual: %e\n',i,norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))/norm(xtau_corrected(:,isLongStep))*h,norm(xtau_corrected(:,isLongStep)-xtau(:,isLongStep))*h)
+        fprintf('Correction of x(t-tau(t)) failed after MaxCorrect=%d iterations.\nRemaining relative residual: %e\nRemaining absolute residual: %e\n',i,norm(xtau_corrected(isLongStep)-xtau(isLongStep))/norm(xtau_corrected(isLongStep))*h,norm(xtau_corrected(isLongStep)-xtau(isLongStep))*h)
         end
-        xtau(:,isLongStep)=xtau_corrected(:,isLongStep);
+        xtau(isLongStep)=xtau_corrected(isLongStep);
     end
 end
 function x_next = solveLinSystem(Etij,Atij,ftij,xi,h)

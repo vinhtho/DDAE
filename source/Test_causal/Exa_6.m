@@ -30,7 +30,7 @@ A = @(t) A;
 
 tspan=[0,10];
 
-options.Iter=1000;
+options.MaxIter=1000;
 options.StrIdx = 2;
 
 tic

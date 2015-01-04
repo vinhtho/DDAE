@@ -2,6 +2,8 @@
 % strangeness-index: 1 for t not equal to zero
 % 1 time varying delay
 
+clear all; close all; clc
+
 E=@(t)[
     0   t
     0   0

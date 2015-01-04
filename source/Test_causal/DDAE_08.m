@@ -2,7 +2,7 @@
 % Modified from DDAE TEST PROBLEM 03
 % strangeness-index: 0
 
-
+clear all; close all; clc
         E=@(t)[
             1   0
             0   0

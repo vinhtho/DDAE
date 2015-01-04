@@ -1,6 +1,11 @@
 % DDAE TEST PROBLEM 09
 % strangeness-index: 2
+% becoming advanced if we set B(3,2)=1 (or set ep = 1)
 
+clear all; close all; clc
+
+% parameter that describes B(3,2)
+ep = 1;
 
 E=@(t) [
     0   1   0
@@ -12,10 +17,11 @@ A=@(t) [
     0   1   0
     0   0   1
     ];
+
 B=@(t) [
     0   1   0
     0   0   0
-    0   1   0
+    0   ep   0
     ];
 
 phi=@(t)[

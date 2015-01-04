@@ -1,4 +1,4 @@
-% DDAE TEST PROBLEM 14
+% DDAE TEST PROBLEM 14b
 % strangeness-index: 3
 
 % advanced problem!!!

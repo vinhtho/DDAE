@@ -1,6 +1,6 @@
 clear all; close all; clc;
 
-Exa_noncausal_4
+Exa_noncausal_2
 
 tspan = [0,10];
 
@@ -10,6 +10,8 @@ options.MaxStrIdx=1;
 options.MaxShift=1;
 options.Iter=100;
 options.MaxStrIdx = 3;
+
+options.IsConst = 0;
 
 sourcefolder = genpath('../');
 addpath(sourcefolder);

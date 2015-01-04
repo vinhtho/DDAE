@@ -1,6 +1,8 @@
 % DDAE TEST PROBLEM 10
 % strangeness-index: 0
 
+clear all; close all; clc
+
         E=@(t)[
             1   0
             0   0

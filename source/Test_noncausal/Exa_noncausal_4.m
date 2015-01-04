@@ -18,7 +18,7 @@ B=@(t) [
     0   0   1
     ];
 
-	phi=@(t)[
+phi=@(t)[
     exp(t)
     t
     ones(1,length(t))

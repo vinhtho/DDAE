@@ -1,10 +1,15 @@
-clear all; close all; clc;
+% Testing the code colddae on causal systems
+% Problems DDAE_05, DDAE_06, DDAE_14 are of advanced type.
+% In particular, DDAE_14 shows which components are "badly solved"
+% Problem DDAE_09 is intersting - may try BVP solver
+% Problem DDAE_12 is not understandable why the error is not good as
+% expected
 
-DDAE_15;
-% trouble: 1,2,4,5,6,7,9,11,12,13,14,14b,15
+DDAE_12;
 
 tspan = [0,10];
-options.Iter=100;
+options.Step = 1e-3;
+%options.Iter=100;
 options.MaxStrIdx = 3;
 
 sourcefolder = genpath('../');
@@ -22,10 +27,13 @@ figure(); clf;
 for i=1:n
     subplot(2,n,i);
     plot(t,x(i,:))
+    ylim([min(x(i,:))*1.1 max(x(i,:)) * 1.1])
+    grid
     legend(strcat('x_',num2str(i)));
-
+     
     subplot(2,n,n+i)
-    plot(t,x(i,:)-X_e(i,:))
+    error_i = x(i,:)-X_e(i,:);
+    plot(t,error_i)
     legend(strcat('Abs. error of x_',num2str(i)));
 end
 

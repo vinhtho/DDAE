@@ -35,14 +35,12 @@ B = @(t) P(t)*B;
 
 tspan=[0,10];
 
-options.MaxIter=1000;
-options.StrIdx = 0;
-options.MaxStrIdx = 2;
-options.MaxShift = 0;
-options.IsConst = 0;
+options.Iter=1000;
+options.StrIdx = 2;
+options.isConst = 0;
 
 tic
-[t,x,info]=colddae_(E,A,B,f,tau,phi,[0,10],options);
+[t,x,info]=colddae(E,A,B,f,tau,phi,[0,10],options);
 %[t,x] = solve_ddae({E,A,B,f,tau,phi},tspan,options);
 toc
 

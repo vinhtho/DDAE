@@ -102,8 +102,8 @@ if ~isfield(options,'MinStep')   options.MinStep = 0; end
 if ~isfield(options,'MaxStep')   options.MaxStep = inf; end
 
 % tolerances
-if ~isfield(options,'AbsTol')    options.AbsTol = 1e-7; end
-if ~isfield(options,'RelTol')    options.RelTol = 1e-7; end
+if ~isfield(options,'AbsTol')    options.AbsTol = 1e-5; end
+if ~isfield(options,'RelTol')    options.RelTol = 1e-5; end
 
 % the DDAE's indeces (guesses, if unknown)
 if ~isfield(options,'StrIdx')    options.StrIdx = 0; end

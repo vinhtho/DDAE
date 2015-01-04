@@ -2,6 +2,8 @@
 % strangeness-index: 3
 % advanced problem!!!
 
+clear all; close all; clc
+
 E=@(t)[
     0   1   0   0
     0   0   1   0

@@ -2,6 +2,7 @@
 % Strangeness index 1
 % 2 constant delay
 
+clear all; close all; clc
 
 E=@(t)[
     0   t
@@ -26,7 +27,6 @@ f=@(t)[
     1
     -t
     ];
-
 
 phi=@(t)[
     exp(t)

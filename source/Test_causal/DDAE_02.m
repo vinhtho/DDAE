@@ -2,6 +2,7 @@
 % strangeness-index: 1 for t not equal to zero
 
 clear all; close all; clc
+
         E=@(t)[
             0   t
             0   0
@@ -30,11 +31,3 @@ t0 = tspan(1);
 x0=phi(t0);
 % the exact solution
 xe = @(t)phi(t);
-
-options.Iter=100;
-options.MaxStrIdx = 3;
-
-[t,x,info] = colddae(E,A,B,f,tau,phi,tspan,options);
-
-figure(); clf;
-plot(t,x)
