@@ -62,7 +62,7 @@ Germany; \{ha,mavinh,mehrmann\}@math.tu-berlin.de}
 
 \maketitle
 
-\newcommand{\thedate}{Version 0.4 \quad \today}
+\newcommand{\thedate}{Version 0.5 \quad \today}
 
 \begin{center}
 \thedate
@@ -71,10 +71,15 @@ Germany; \{ha,mavinh,mehrmann\}@math.tu-berlin.de}
 \vskip 0.2cm
 
 \begin{abstract}
-We discuss the new solver COLDDAE for the numerical solution of linear differential-algebraic equations (DDAEs) of retarded and neutral type. The implementation is mainly based on the results introduced in \cite{HaM14}. In the single delay case, the solver can handle noncausal systems, i.e., systems, where the solution does not only depend on the system's past and current states, but also future states.
+We discuss the new solver COLDDAE for the numerical solution of linear differential-algebraic equations 
+(DDAEs) of retarded and neutral type. The implementation is mainly based on the results introduced in 
+\cite{HaM14}. In the single delay case, the solver can handle noncausal systems, i.e., systems, where the 
+solution at the current time does not only depend on the system at the past and current time points, 
+but also future time points.
 \end{abstract}
 
-\begin{keywords} Delay differential-algebraic equation, differential-algebraic equation, delay differential equations, method of steps, derivative array, classification of DDAEs.
+\begin{keywords} Delay differential-algebraic equation, differential-algebraic equation, delay differential 
+equations, method of steps, derivative array, classification of DDAEs.
 \end{keywords}
 
 \begin{AMS}
@@ -117,7 +122,8 @@ Under the assumption that the continuous, piecewise differentiable solution of t
 solver is based on the regularization procedure introduced in \cite{HaM14}, which first determines the shift index and 
 the strangeness index and then transforms the DDAE \eqref{eq1.1a} into a regular, strangeness-free formulation with the same solution set. 
 Using this regularization procedure, we can also compute a consistent initial value, if $\phi(t_0)$ is not consistent, i.e., does not satisfy all (hidden) constraints, and apply any appropriate integration scheme on the 
-resulting regular, strangeness-free DDAE. We implemented the Radau IIA method of order 5, which is a 3-stage collocation Runge-Kutta method, see \cite{HaiW91}.
+resulting regular, strangeness-free DDAE. 
+We implemented the three stage Radau IIA collocation method, see \cite{HaiW91}.
 %
 %=======================================================================================================================================
 \section{A brief survey of the basic results}
@@ -250,7 +256,7 @@ For the determination of the strangeness-free DDAE \eqref{eq6}, we use the deriv
 which can be rewritten as
 %
 \be\label{eq7}
-M(t) z(t) = P(t) z(t-\tau(t)) + g,
+M(t) z(t) = P(t) z(t-\tau(t)) + g(t),
 \ee
 %
 where 
@@ -269,7 +275,7 @@ where
    *           & *       &   *    &  & & 0 
 } \\
 && z(t) := \m{x(t) \\ \dot{x}(t) \\ \vdots \\ x^{(\mu+1)}(t)}, 
-\quad g := \m{f(t) \\ \dot{f}(t) \\ \vdots \\ f^{(\mu+1)}(t)}.  
+\quad g(t) := \m{f(t) \\ \dot{f}(t) \\ \vdots \\ f^{(\mu+1)}(t)}.  
 \eens
 %
 Note that the $j$-th block row of $P$ is obtained by computing the coefficients of
@@ -288,7 +294,9 @@ composite function $g(f(x))$ in the variable $x$ as follows
 where the sum is over all possible combinations of nonnegative integers $b_1,\dots,b_k$ such that $b_1+ 2b_2 + \dots+ mb_m = m$ and 
 $k=b_1+b_2+\dots+b_m$. Note that, in our solver we assume that $\mu \leq 3$, therefore the entries of $P$ are hard coded.
 
-In the following, for notational convenience, we will use Matlab notation, \cite{matlab}.
+In the following, for notational convenience, we will use Matlab notation, \cite{matlab} and we also omit the 
+time variable $t$ in the coefficients of \eqref{eq7}.
+
 The set of algebraic constraints in the strangeness-free DDAE \eqref{eq6} is selected by finding the full row rank matrix $Z_2$ such that
 %
 \be\label{eq8}
@@ -336,7 +344,9 @@ In summary, we obtain the strangeness-free DDAE
 where $\m{Z_1^T E(t) \\ Y^T_2 Z^T_2 M(:,1:n)}$ is nonsingular. 
 
 \subsection{Regularization procedure for noncausal DDAEs with single delay}\label{Sec2.2}
-In order to handle noncausal DDAEs with single delay, in \cite{HaM14}, the authors proposed the concept of the \emph{shift index} as follows.
+In order to handle noncausal DDAEs with single constant delays, in \cite{HaM14}, the authors proposed the 
+concept of the \emph{shift index}. This concept can be directly generalized to the case of time varying delays 
+as follows.
 %
 \begin{definition}\label{shift index}
 Consider the problem \eqref{eq1.1}. For each $t\in \mathbb{I}$, consider the sequence $\{\th{j}| j\geq 0\}$, starting with $\th{0}=t$, 
@@ -400,8 +410,8 @@ As shown in \cite{HaM14}, assuming that the DDAE \eqref{eq1.1a} is not of advanc
 %
 where $\m{\hE_{1}(\th{0}) \\ \hA_{2}(\th{0})}$ is nonsingular.\\
 Analogous to the case of causal DDAEs, we build the derivative arrays \eqref{eq7} for system \eqref{eq15}, and extract from it the 
-strangeness-free DDAE \eqref{eq16}. To keep the brevity of the paper, we will not repeat the process.
-It has been observed in \cite{HaM14} that the main differences between regularizing causal DDAEs and regularizing noncausal DDAEs are:
+strangeness-free DDAE \eqref{eq16}. To keep the brevity of this paper, we will not repeat the process.
+However, it should be noted, as has been observed in \cite{HaM14}, that the main differences between regularizing causal DDAEs and regularizing noncausal DDAEs are:
 \begin{enumerate}
  \item[i)] The size of the derivative arrays \eqref{eq7} for noncausal DDAEs is bigger than for causal DDAEs.
  \item[ii)] For noncausal DDAEs the set of differential equations in the strangeness-free formulation \eqref{eq6} cannot be selected from the original DDAE \eqref{eq1.1a}, but must be 
@@ -723,8 +733,8 @@ suggestions and comments.
 
 %-------------------------------------------------------------------------------
 \bibliographystyle{plain}
-%\bibliography{HaMM14}
-\bibliography{Phi_Dec_15_14}
+\bibliography{HaMM15}
+%\bibliography{Phi_Dec_15_14}
 %-------------------------------------------------------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}
