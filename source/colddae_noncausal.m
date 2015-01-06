@@ -521,7 +521,7 @@ for K = 0:KMax
             P = U(1:(mu+1)*m,:)'*inflateB(B,ti,tau,mu,tolR,m,n);
         end
         %
-        % TODO SOME COMMENTS
+        % TODO SOME COMMENTS - very unclear
         Z2 = null2([M,P(:,n+1:(mu+1)*n)]',tolR);
         Z1 = orth2(M,tolR);
         %
