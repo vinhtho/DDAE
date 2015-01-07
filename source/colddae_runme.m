@@ -145,7 +145,7 @@ disp('Press enter to continue.')
 disp(' ')
 pause
 
-disp('Example 6: Same as Example 5, but Strangeness- and shift-index are now set.')
+disp('Example 6: Same as Example 5, but strangeness- and shift-index are now set.')
 clear options
 options.StrIdx=2;
 options.MaxStrIdx=2;
