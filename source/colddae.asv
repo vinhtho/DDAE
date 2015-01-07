@@ -551,10 +551,12 @@ idx2N(1:n) = true;
 % only for single delay.
 t_shifted = nan(KMax+1,1);
 t_shifted(1) = ti;
+t_shifted_ = nan(KMax+1,1);
+t_shifted_(1) = ti;
 if k==1
-%     for K=1:KMax
-%         t_shifted(K+1) = newton(@(t1) t1-tau(t1)-t_shifted(K),t_shifted(K)+tau(t_shifted(K)),1e-15,10);
-%     end
+    for K=1:KMax
+        t_shifted_(K+1) = newton(@(t1) t1-tau(t1)-t_shifted_(K),t_shifted_(K)+tau(t_shifted(K)),1e-15,10);
+    end
     for i = 1:KMax
         t_shifted(i+1) = fsolve(@(t1) t1-tau(t1)-t_shifted(i),t_shifted(i)+tau(t_shifted(i)),optimset('Display','off'));
     end    
