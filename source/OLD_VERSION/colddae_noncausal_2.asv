@@ -547,15 +547,15 @@ for K = 0:KMax
         
         %
         % extract a system without x(t+tau), x(t+2*tau), ..., x(t+K*tau) and its derivatives
-        U1 = null2([DISYS(idx1,idx2),[P(:,k*n+1:end);zeros((mu+1)*K*m,mu*k*n)]]',tolR);
+        U1 = null2([DISYS(idx1,idx2),P(:,k*n)]',tolR);
         U2 = orth2(U1'*DISYS(idx1,or(idx2N,idx2M)),tolR);
         U=U1*U2;
         M = U'*DISYS(idx1,idx2M);
         N = -U'*DISYS(idx1,idx2N);
         if isfield(options,'DArray') && mu<=mu_provided
-            P = U(1:(mu+1)*m,:)'*P;
+            P = U(1:(mu+1)*m,:)'*inflateB_provided(1:(mu+1)*m,1:(mu+1)*k*n);
         else
-            P = U(1:(mu+1)*m,:)'*P;
+            P = U(1:(mu+1)*m,:)'*inflateB(B,ti,tau,mu,tolR,m,n);
         end
         
         % extract the coefficients of the algebraic variables
