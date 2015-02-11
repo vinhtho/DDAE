@@ -591,7 +591,7 @@ for $t>0$ and $x(t)=\phi(t)$ for $t\leq 0$ with
 \esq
 %
 {\bf Analytical solution:} \quad $x(t)=\phi(t)$ for $t>0$.\\
-The relative error of the numerical solution of \eqref{eq20} with $m=2$ is presented in Figure \ref{fig_Paul}.
+The relative error of the numerical solution of \eqref{eq20} with $m=2$ is going up fast, since additional errors are introduced by the delayed terms, see Figure \ref{fig_Paul}. 
 \end{example}
 %
 \begin{example}\label{Exa2} We consider the following DDAE
@@ -622,7 +622,7 @@ x(t-1), && \mbox{for all } t>0,\\
 \end{aligned}
 \end{equation}
 %
-Note that the DDAE \eqref{eq21} is reformulated from the neutral DDE $\dot{x}(t)=x(t)+\dot{x}(t-1)$ by introducing a new variable to present $x(t-1)$.\\
+Note that the DDAE \eqref{eq21} is reformulated from the neutral DDE $\dot{x}(t)=x(t)+\dot{x}(t-1)$ by introducing a new variable to represent $x(t-1)$.\\
 {\bf Analytical solution:}\quad The problem \eqref{eq21} possesses the unique solution 
 $x(t)= \m{x_1(t) \\ x_2(t)}$ given by
 \begin{align*}
@@ -637,7 +637,7 @@ e^t & \mbox{ for } 0<t\leq1, \\
 \ec
 \end{align*}
 and
-$x_2(t)=x_1(t-1)$. The relative error of the numerical solution of \eqref{eq20} is also presented in Figure \ref{fig_Paul}.
+$x_2(t)=x_1(t-1)$. The relative error of the numerical solution of \eqref{eq20} is presented in Figure \ref{fig_Paul} and goes up, too, due to the discretization and additional errors introduced by approximating the delayed terms.
 
 \begin{figure}[h]
  \centering
@@ -676,7 +676,7 @@ e^t\\
 && \mbox{for all } t \leq 0.
 \end{aligned}
 \end{equation}
-The function $f(t)$ is chosen such that the analytical solution is $x(t)=\phi(t)$. The relative error of the numerical solution of \eqref{eq22} is presented in Figure \ref{fig_222}.
+The function $f(t)$ is chosen such that the analytical solution is $x(t)=\phi(t)$. The relative error of the numerical solution of \eqref{eq22} is presented in Figure \ref{fig_222}. Note, that the regularized form of \eqref{eq22} consists of algebraic equations (with delayed terms) only, therefore the relative error does not go up as fast as in the other examples.
 \end{example}
 
 \begin{example} We consider the following linear DDAE with constant coefficients and time-varying delay. This DDAE 
@@ -708,8 +708,9 @@ is noncausal and it has strangeness index one and shift index one.
 && \mbox{for all } t \leq 0.
 \end{aligned}
 \end{equation}
+After regularization the system becomes a pure ODE and an algebraic equation.
 The function $f(t)$ is chosen such that the IVP \eqref{eq23} has the unique solution $x(t)=\phi(t)$.
-The relative error of the numerical solution of the IVP \eqref{eq23} is also presented in Figure \ref{fig_222}.
+The relative error of the numerical solution of the IVP \eqref{eq23} is presented in Figure \ref{fig_222}.
 %
 \begin{figure}[h!]
  \centering
@@ -731,10 +732,11 @@ The relative error of the numerical solution of the IVP \eqref{eq23} is also pre
 \section*{Acknowledgment} The first two authors would like to thank Benjamin Unger for useful 
 suggestions and comments.
 
+\newpage
 %-------------------------------------------------------------------------------
 \bibliographystyle{plain}
-\bibliography{HaMM15}
-%\bibliography{Phi_Dec_15_14}
+%\bibliography{HaMM15}
+\bibliography{Phi_Dec_15_14}
 %-------------------------------------------------------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}
