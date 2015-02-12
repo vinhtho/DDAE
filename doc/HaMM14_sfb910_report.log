@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.3-1.40.12 (MiKTeX 2.9) (preloaded format=pdflatex 2012.8.18)  11 FEB 2015 16:01
+This is pdfTeX, Version 3.1415926-2.3-1.40.12 (MiKTeX 2.9) (preloaded format=pdflatex 2012.8.18)  12 FEB 2015 15:38
 entering extended mode
 **C:/Users/Ma*Vinh*Tho/Documents/GitHub/DDAE/doc/HaMM14_sfb910_report.tex
 ("C:/Users/Ma Vinh Tho/Documents/GitHub/DDAE/doc/HaMM14_sfb910_report.tex"
@@ -330,20 +330,20 @@ Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 2
 )
 ("C:\Users\Ma Vinh Tho\Documents\GitHub\DDAE\doc\new_command.tex")
 ("C:\Users\Ma Vinh Tho\Documents\GitHub\DDAE\doc\HaMM14_sfb910_report.aux")
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 50.
-LaTeX Font Info:    ... okay on input line 50.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 50.
-LaTeX Font Info:    ... okay on input line 50.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 50.
-LaTeX Font Info:    ... okay on input line 50.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 50.
-LaTeX Font Info:    ... okay on input line 50.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 50.
-LaTeX Font Info:    ... okay on input line 50.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 50.
-LaTeX Font Info:    ... okay on input line 50.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 50.
-LaTeX Font Info:    ... okay on input line 50.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
 
 ("C:\Program Files (x86)\MiKTeX 2.9\tex\context\base\supp-pdf.mkii"
 [Loading MPS to PDF converter (version 2006.09.02).]
@@ -360,7 +360,7 @@ LaTeX Font Info:    ... okay on input line 50.
 \everyMPtoPDFconversion=\toks26
 )
 \AtBeginShipoutBox=\box31
-Package hyperref Info: Link coloring OFF on input line 50.
+Package hyperref Info: Link coloring OFF on input line 51.
  ("C:\Program Files (x86)\MiKTeX 2.9\tex\latex\hyperref\nameref.sty"
 Package: nameref 2010/04/30 v2.40 Cross-referencing by name of section
 
@@ -369,102 +369,93 @@ Package: gettitlestring 2010/12/03 v1.4 Cleanup title references (HO)
 )
 \c@section@level=\count128
 )
-LaTeX Info: Redefining \ref on input line 50.
-LaTeX Info: Redefining \pageref on input line 50.
-LaTeX Info: Redefining \nameref on input line 50.
+LaTeX Info: Redefining \ref on input line 51.
+LaTeX Info: Redefining \pageref on input line 51.
+LaTeX Info: Redefining \nameref on input line 51.
 
 ("C:\Users\Ma Vinh Tho\Documents\GitHub\DDAE\doc\HaMM14_sfb910_report.out")
 ("C:\Users\Ma Vinh Tho\Documents\GitHub\DDAE\doc\HaMM14_sfb910_report.out")
 \@outlinefile=\write3
-LaTeX Font Info:    Try loading font information for U+msa on input line 59.
+LaTeX Font Info:    Try loading font information for U+msa on input line 60.
 
 ("C:\Program Files (x86)\MiKTeX 2.9\tex\latex\amsfonts\umsa.fd"
 File: umsa.fd 2009/06/22 v3.00 AMS symbols A
 )
-LaTeX Font Info:    Try loading font information for U+msb on input line 59.
+LaTeX Font Info:    Try loading font information for U+msb on input line 60.
 
 ("C:\Program Files (x86)\MiKTeX 2.9\tex\latex\amsfonts\umsb.fd"
 File: umsb.fd 2009/06/22 v3.00 AMS symbols B
 )
-LaTeX Font Info:    Try loading font information for OMS+cmr on input line 61.
+LaTeX Font Info:    Try loading font information for OMS+cmr on input line 62.
 
 ("C:\Program Files (x86)\MiKTeX 2.9\tex\latex\base\omscmr.fd"
 File: omscmr.fd 1999/05/25 v2.5h Standard LaTeX font definitions
 )
 LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <8> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 61.
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 62.
  [1
 
 {C:/ProgramData/MiKTeX/2.9/pdftex/config/pdftex.map}] [2] [3]
-Overfull \hbox (16.21251pt too wide) in alignment at lines 264--279
+Underfull \hbox (badness 10000) in paragraph at lines 223--226
+
+ []
+
+
+Overfull \hbox (16.21251pt too wide) in alignment at lines 245--260
  [][][] []
  []
 
+
+Overfull \hbox (66.68137pt too wide) in paragraph at lines 260--267
+\OT1/cmr/m/n/10 Note that the $\OML/cmm/m/it/10 j$\OT1/cmr/m/n/10 th block row 
+of $\OML/cmm/m/it/10 P$ \OT1/cmr/m/n/10 is ob-tained by com-put-ing the co-ef-f
+i-cients of $[][] []$,
+ []
+
 [4] [5]
-Overfull \hbox (10.7732pt too wide) in paragraph at lines 402--402
+Overfull \hbox (10.7732pt too wide) in paragraph at lines 377--377
 [] 
  []
 
 [6] [7] [8]
-Overfull \hbox (4.53996pt too wide) in paragraph at lines 623--628
-\OT1/cmr/bx/n/10 Analytical so-lu-tion: \OT1/cmr/m/it/10 The prob-lem [] pos-se
-sses the unique so-lu-tion $\OML/cmm/m/it/10 x\OT1/cmr/m/n/10 (\OML/cmm/m/it/10
- t\OT1/cmr/m/n/10 ) = []$
- []
-
-
-Overfull \hbox (24.88086pt too wide) in paragraph at lines 638--638
+Overfull \hbox (23.74777pt too wide) in paragraph at lines 623--623
 [] 
  []
 
-<plot_149_214.pdf, id=240, 711.65875pt x 341.275pt>
+[9] <plot_149_214.pdf, id=247, 711.65875pt x 341.275pt>
 File: plot_149_214.pdf Graphic file (type pdf)
  <use plot_149_214.pdf>
-Package pdftex.def Info: plot_149_214.pdf used on input line 644.
+Package pdftex.def Info: plot_149_214.pdf used on input line 630.
 (pdftex.def)             Requested size: 370.38374pt x 177.61502pt.
 
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-[9]
-Overfull \hbox (0.773pt too wide) detected at line 710
-[][] []
- []
-
-<plot_222_varshifted.pdf, id=263, 711.65875pt x 341.275pt>
+<plot_222_varshifted.pdf, id=255, 711.65875pt x 341.275pt>
 File: plot_222_varshifted.pdf Graphic file (type pdf)
 
 <use plot_222_varshifted.pdf>
-Package pdftex.def Info: plot_222_varshifted.pdf used on input line 717.
+Package pdftex.def Info: plot_222_varshifted.pdf used on input line 706.
 (pdftex.def)             Requested size: 370.38374pt x 177.61502pt.
-
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-[10 <C:/Users/Ma Vinh Tho/Documents/GitHub/DDAE/doc/plot_149_214.pdf>]
+ [10 <C:/Users/Ma Vinh Tho/Documents/GitHub/DDAE/doc/plot_149_214.pdf>]
 ("C:\Users\Ma Vinh Tho\Documents\GitHub\DDAE\doc\HaMM14_sfb910_report.bbl"
-Underfull \vbox (badness 1331) has occurred while \output is active []
+[11 <C:/Users/Ma Vinh Tho/Documents/GitHub/DDAE/doc/plot_222_varshifted.pdf>])
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 731.
 
- [11 <C:/Users/Ma Vinh Tho/Documents/GitHub/DDAE/doc/plot_222_varshifted.pdf>])
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 742.
- [12]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 742.
-
-("C:\Users\Ma Vinh Tho\Documents\GitHub\DDAE\doc\HaMM14_sfb910_report.aux")
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 742.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 742.
+[12]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 731.
+ ("C:\Users\Ma Vinh Tho\Documents\GitHub\DDAE\doc\HaMM14_sfb910_report.aux")
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 731.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 731.
 Package rerunfilecheck Info: File `HaMM14_sfb910_report.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 742.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 731.
  ) 
 Here is how much of TeX's memory you used:
- 7866 strings out of 494045
- 108400 string characters out of 3145951
- 219118 words of memory out of 3000000
- 10972 multiletter control sequences out of 15000+200000
+ 7854 strings out of 494045
+ 108268 string characters out of 3145951
+ 215528 words of memory out of 3000000
+ 10966 multiletter control sequences out of 15000+200000
  10860 words of font info for 43 fonts, out of 3000000 for 9000
  715 hyphenation exceptions out of 8191
- 34i,23n,35p,459b,463s stack positions out of 5000i,500n,10000p,200000b,50000s
+ 34i,23n,35p,826b,449s stack positions out of 5000i,500n,10000p,200000b,50000s
 <C:/Program Files (x86)/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmbx10.pfb>
 <C:/Program Files (x86)/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmbx8.pfb><C:
 /Program Files (x86)/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmcsc10.pfb><C:/
@@ -486,9 +477,9 @@ ype1/public/amsfonts/cm/cmti8.pfb><C:/Program Files (x86)/MiKTeX 2.9/fonts/type
 public/amsfonts/symbols/msam10.pfb><C:/Program Files (x86)/MiKTeX 2.9/fonts/typ
 e1/public/amsfonts/symbols/msbm10.pfb><C:/Program Files (x86)/MiKTeX 2.9/fonts/
 type1/public/amsfonts/symbols/msbm7.pfb>
-Output written on HaMM14_sfb910_report.pdf (12 pages, 380049 bytes).
+Output written on HaMM14_sfb910_report.pdf (12 pages, 376759 bytes).
 PDF statistics:
- 382 PDF objects out of 1000 (max. 8388607)
- 96 named destinations out of 1000 (max. 500000)
+ 373 PDF objects out of 1000 (max. 8388607)
+ 90 named destinations out of 1000 (max. 500000)
  11 words of extra memory for PDF output out of 10000 (max. 10000000)
 

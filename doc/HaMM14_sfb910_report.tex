@@ -575,7 +575,7 @@ for $t>0$ and $x(t)=\phi(t)$ for $t\leq 0$ with
 \end{equation}
 \esq
 %
-The exact  solution is $x(t)=\phi(t)$ for $t>0$ and the relative error of the numerical solution of \eqref{eq20} with $m=2$ is presented in the left part of Figure~\ref{fig_Paul}.
+The exact  solution is $x(t)=\phi(t)$ for $t>0$ and the relative error of the numerical solution of \eqref{eq20} with $m=2$ is presented in the left part of Figure~\ref{fig_Paul}. It grows very  fast, since additional errors are introduced by the delayed terms
 }
 \end{example}
 %
@@ -664,12 +664,12 @@ e^t\\
 \end{aligned}
 \end{equation}
 %
-The function $f(t)$ is chosen such that the exact solution is $x(t)=\phi(t)$. The relative error of the numerical solution of \eqref{eq22} is presented in the left part of Figure~\ref{fig_222}.
+The function $f(t)$ is chosen such that the exact solution is $x(t)=\phi(t)$. The relative error of the numerical solution of \eqref{eq22} is presented in the left part of Figure~\ref{fig_222}.  Note, that the regularized form of \eqref{eq22} consists of algebraic equations (with delayed terms) only, therefore the relative error does not go up as fast as in the other examples.
 }
 \end{example}
 
-\begin{example} {\rm Consider the following linear DDAE with constant coefficients and time-varying delay. This DDAE
-is noncausal and it has strangeness index one and shift index one.
+\begin{example} {\rm Consider the following noncausal linear DDAE with time-varying delay.
+It has strangeness index one and shift index one, and becomes a pure ODE and an algebraic equation (with delayed terms) after regularization.
 %
 \begin{equation}\label{eq23}
 \begin{aligned}
