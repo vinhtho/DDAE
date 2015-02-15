@@ -3,6 +3,9 @@
 % version 0.3 - Phi 17. Dec 14
 % Version 0.4 - Tho 24. Dec 14
 % typos corrected - Phi 10. Jan 15
+% Version 0.5 - Tho 13 Jan 15
+% Version 0.6 - Volker 7 Feb 15
+% Version 0.7 - Phi + Tho 15 Feb 15
 
 \documentclass[final,reqno]{siamltex}
 
@@ -63,7 +66,7 @@ Germany; \{ha,mavinh,mehrmann\}@math.tu-berlin.de}
 
 \maketitle
 
-\newcommand{\thedate}{Version 0.6 \quad \today}
+\newcommand{\thedate}{Version 0.7 \quad \today}
 
 \begin{center}
 \thedate
@@ -539,7 +542,7 @@ The following fields are available in this solver:
 \item {\tt MaxShift}\quad    Upper bound for the shift index,  default: {\tt 3}.
 \item {\tt InitVal  }\quad    Initial value, not necessarily consistent,  default: $\phi(t_0)$.
 \item {\tt IsConst}\quad   A boolean, {\tt true} if $E,A,B,\tau$ are constant, the regularized system is then computed only once, default: {\tt false}.
-\item {\tt DArray}\quad    Struct with three fields containing $M$, $P$ (or $[P_1,\ldots,P_k]$ for $k>1$) and $g$ from equation \eqref{eq7}.  default: not set.
+\item {\tt DArray}\quad    Struct with three fields containing $M$, $P$ (or $[P_1,\ldots,P_k]$ for $k>1$) and $g$ from equation \eqref{eq7}, default: not set.
 \end{itemize}
 
 \subsection{Output parameters}
@@ -575,7 +578,7 @@ for $t>0$ and $x(t)=\phi(t)$ for $t\leq 0$ with
 \end{equation}
 \esq
 %
-The exact  solution is $x(t)=\phi(t)$ for $t>0$ and the relative error of the numerical solution of \eqref{eq20} with $m=2$ is presented in the left part of Figure~\ref{fig_Paul}. It grows very  fast, since additional errors are introduced by the delayed terms
+The exact  solution is $x(t)=\phi(t)$ for $t>0$ and the relative error of the numerical solution of \eqref{eq20} with $m=2$ is presented in the left part of Figure~\ref{fig_Paul}. It grows very  fast, since additional errors are introduced by the delayed terms.
 }
 \end{example}
 %
