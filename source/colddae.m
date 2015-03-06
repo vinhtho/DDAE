@@ -272,6 +272,10 @@ for i=1:options.MaxIter
     t(i+1) = t(i) + h;
     
     % Estimate the next step size h, but don't let it grow more than 2*h.
+    %
+    % TODO: Wrong formula at the moment. The error of the delay terms are
+    % not considered yet.
+    %
     h_newAbs = 0.9*h*(options.AbsTol/absErr)^(1/6);
     h_newRel = 0.9*h*(options.RelTol/relErr)^(1/6);
     h = min([h_newAbs,h_newRel,2*h]);
@@ -710,7 +714,7 @@ for i=1:MaxIter
         xn = x0;
         return
     end
-    Df0 = matrixDifferential(f,x0,1,AbsTol,1,1);
+    Df0 = matrixDifferential(f,x0,1);
     xn = x0-f0/Df0;
     if abs(xn-x0)<=AbsTol
         return
@@ -748,8 +752,8 @@ dA(1:m,1:n) = A0;
 NM(1:m,n+1:2*n) = E0;
 for l = 1:mu
     % Make dE and dA contain all derivatives up to order l.
-    dE(l*m+1:(l+1)*m,1:n) = matrixDifferential( E,t,l,tol,m,n);
-    dA(l*m+1:(l+1)*m,1:n) = matrixDifferential( A,t,l,tol,m,n);
+    dE(l*m+1:(l+1)*m,1:n) = matrixDifferential( E,t,l);
+    dA(l*m+1:(l+1)*m,1:n) = matrixDifferential( A,t,l);
     %Expand M_(l-1) to M_l.
     for j = 0:l-1
         k = l-j;
@@ -781,30 +785,30 @@ switch mu
     case 0
         P = B0;
     case 1
-        B1 = matrixDifferential(B,tK,1,tol,m,k*n);
-        tau1 = matrixDifferential(tau,tK,1,tol,1,k);
+        B1 = matrixDifferential(B,tK,1);
+        tau1 = matrixDifferential(tau,tK,1);
         
         P = [
             B0,zeros(m,k*n);
             B1,B0.*kron((1-tau1),ones(m,n))
             ];
     case 2
-        B1 = matrixDifferential(B,tK,1,tol,m,k*n);
-        B2 = matrixDifferential(B,tK,2,tol,m,k*n);
-        tau1 = matrixDifferential(tau,tK,1,tol,1,k);
-        tau2 = matrixDifferential(tau,tK,2,tol,1,k);
+        B1 = matrixDifferential(B,tK,1);
+        B2 = matrixDifferential(B,tK,2);
+        tau1 = matrixDifferential(tau,tK,1);
+        tau2 = matrixDifferential(tau,tK,2);
         P = [
             B0,zeros(m,2*k*n);
             B1,B0.*kron(1-tau1,ones(m,n)),zeros(m,k*n);
             B2,2*B1.*kron(1-tau1,ones(m,n))-B0.*kron(tau2,ones(m,n)),B0.*kron((1-tau1).^2,ones(m,n))
             ];
     case 3
-        B1 = matrixDifferential(B,tK,1,tol,m,k*n);
-        B2 = matrixDifferential(B,tK,2,tol,m,k*n);
-        B3 = matrixDifferential(B,tK,3,tol,m,k*n);
-        tau1 = matrixDifferential(tau,tK,1,tol,1,k);
-        tau2 = matrixDifferential(tau,tK,2,tol,1,k);
-        tau3 = matrixDifferential(tau,tK,3,tol,1,k);
+        B1 = matrixDifferential(B,tK,1);
+        B2 = matrixDifferential(B,tK,2);
+        B3 = matrixDifferential(B,tK,3);
+        tau1 = matrixDifferential(tau,tK,1);
+        tau2 = matrixDifferential(tau,tK,2);
+        tau3 = matrixDifferential(tau,tK,3);
         P = [
             B0,zeros(m,3*k*n);
             B1,B0.*kron(1-tau1,ones(m,n)),zeros(m,2*k*n);
@@ -835,31 +839,20 @@ function g  = inflateAndShiftf(f,t_shifted,K,mu,tol,m)
 g = zeros((K+1)*(mu+1)*m,1);
 for j = 0:K
     for i = 1:(mu+1)
-        g(((i-1)*m+1:i*m)+j*(mu+1)*m) = matrixDifferential(f,t_shifted(j+1),i-1,tol,m,1);
+        g(((i-1)*m+1:i*m)+j*(mu+1)*m) = matrixDifferential(f,t_shifted(j+1),i-1);
     end
 end
 
-function dA = matrixDifferential(A,t,k,tol,m,n)
-% Approximates the time derivative of the (matrix) function A.
+function dA = matrixDifferential(A,t,k)
+% Approximates the k-th time derivative of the (matrix) function A at the
+% time point t.
 eps=0.01;
-j=0;
-delta=sqrt(eps*max(0.01,abs(t)));
-temp=zeros(m,n,k+1);
-alpha=tol+1;
-while j<2 && alpha>tol
-    delta=delta/2;
-    dA_old=A(0);
-    for i=0:k
-        % temp(:,:,i+1)=(-1)^i*nchoosek(k,i)*A(t+(k/2-i)*delta);
-        temp(:,:,i+1)=(-1)^i*round(prod(((k-i+1):k)./(1:i)))*A(t+(k/2-i)*delta);
-    end
-    dA=sum(temp,3)/delta^k;
-    alpha=norm(dA-dA_old);
-    j=j+1;
+delta=sqrt(eps)*max(0.01,abs(t)); % TODO find a better delta which avoids cancellation
+summe = A(t+(k/2)*delta);
+for i=1:k
+    summe = summe + (-1)^i*round(prod(((k-i+1):k)./(1:i)))*A(t+(k/2-i)*delta);
 end
-if min(min(isfinite(dA)))==0
-    warning('ERROR IN matrixDifferential.m!')
-end
+dA=summe/delta^k;
 
 function Z = null2(A,AbsTol)
 % Slight modification of MATLAB's null function. Singular values smaller

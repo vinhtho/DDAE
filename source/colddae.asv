@@ -272,6 +272,10 @@ for i=1:options.MaxIter
     t(i+1) = t(i) + h;
     
     % Estimate the next step size h, but don't let it grow more than 2*h.
+    %
+    % TODO: Wrong formula at the moment. The error of the delay terms are
+    % not considered yet.
+    %
     h_newAbs = 0.9*h*(options.AbsTol/absErr)^(1/6);
     h_newRel = 0.9*h*(options.RelTol/relErr)^(1/6);
     h = min([h_newAbs,h_newRel,2*h]);
@@ -551,12 +555,10 @@ idx2N(1:n) = true;
 % only for single delay.
 t_shifted = nan(KMax+1,1);
 t_shifted(1) = ti;
-t_shifted_ = nan(KMax+1,1);
-t_shifted_(1) = ti;
 if k==1
-    for K=1:KMax
-        t_shifted_(K+1) = newton(@(t1) t1-tau(t1)-t_shifted_(K),t_shifted_(K)+tau(t_shifted(K)),1e-15,10);
-    end
+%     for K=1:KMax
+%         t_shifted(K+1) = newton(@(t1) t1-tau(t1)-t_shifted(K),t_shifted(K)+tau(t_shifted(K)),1e-15,10);
+%     end
     for i = 1:KMax
         t_shifted(i+1) = fsolve(@(t1) t1-tau(t1)-t_shifted(i),t_shifted(i)+tau(t_shifted(i)),optimset('Display','off'));
     end    
@@ -841,27 +843,16 @@ for j = 0:K
     end
 end
 
-function dA = matrixDifferential(A,t,k,tol,m,n)
-% Approximates the time derivative of the (matrix) function A.
+function dA = matrixDifferential(A,t,k,tol)
+% Approximates the k-th time derivative of the (matrix) function A at the
+% time point t.
 eps=0.01;
-j=0;
-delta=sqrt(eps*max(0.01,abs(t)));
-temp=zeros(m,n,k+1);
-alpha=tol+1;
-while j<2 && alpha>tol
-    delta=delta/2;
-    dA_old=A(0);
-    for i=0:k
-        % temp(:,:,i+1)=(-1)^i*nchoosek(k,i)*A(t+(k/2-i)*delta);
-        temp(:,:,i+1)=(-1)^i*round(prod(((k-i+1):k)./(1:i)))*A(t+(k/2-i)*delta);
-    end
-    dA=sum(temp,3)/delta^k;
-    alpha=norm(dA-dA_old);
-    j=j+1;
+delta=sqrt(eps)*max(0.01,abs(t));
+summe = A(t+(k/2)*delta);
+for i=1:k
+    summe = summe + (-1)^i*round(prod(((k-i+1):k)./(1:i)))*A(t+(k/2-i)*delta);
 end
-if min(min(isfinite(dA)))==0
-    warning('ERROR IN matrixDifferential.m!')
-end
+dA=sum(temp,3)/delta^k;
 
 function Z = null2(A,AbsTol)
 % Slight modification of MATLAB's null function. Singular values smaller
