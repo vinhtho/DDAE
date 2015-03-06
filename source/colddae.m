@@ -215,7 +215,7 @@ t(1)=tspan(1);
 %-------------------------------------------------------------------------%
 [E1,A1,B1,~,A2,B2,f2,mu,K,U,Z1,Z2] = getRegularizedSystem(E,A,B,f,tau,t0,options,m,n);
 xtau0 = nan(k*n,1);
-tau0 = tau(0);
+tau0 = tau(t0);
 for l=1:k
     xtau0((l-1)*n+1:l*n)=phi(t0-tau0(l));
 end
